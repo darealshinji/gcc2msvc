@@ -1,0 +1,5 @@
+/gcc2msvc
+/test.c
+/test.cpp
+*.obj
+*.exe
