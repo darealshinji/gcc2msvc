@@ -245,8 +245,8 @@ int main(int argc, char **argv)
           have_outname = true;
         }
 
-        // -I path  -DDEFINE[=ARG]  -UDEFINE
-        else if (arg[1] == 'I' || arg[1] == 'D' || arg[1] == 'U')
+        // -I path
+        else if (arg[1] == 'I')
         {
           if (len == 2) {
             ++i;
@@ -255,6 +255,19 @@ int main(int argc, char **argv)
             }
           } else {
             cmd += " /" + str.substr(1,1) + "'" + win_path(arg+2) + "'";
+          }
+        }
+
+        // -DDEFINE[=ARG]  -UDEFINE
+        else if (arg[1] == 'D' || arg[1] == 'U')
+        {
+          if (len == 2) {
+            ++i;
+            if (i < argc) {
+              cmd += " /" + str.substr(1,1) + "'" + STR(argv[i]) + "'";
+            }
+          } else {
+            cmd += " /" + str.substr(1,1) + "'" + STR(arg+2) + "'";
           }
         }
 
