@@ -21,10 +21,36 @@
  * SOFTWARE.
  */
 
-/* References:
- *  - gcc(1)
- *  - https://msdn.microsoft.com/en-us/library/19z1t1wy.aspx
- */
+#define USAGE "\n" \
+  "This program is a wrapper for msvc's cl.exe and intended to be used\n" \
+  "with Windows 10's \"Bash on Ubuntu on Windows\" shell.\n" \
+  "It is invoked with gcc options (only a limited number) and turns\n" \
+  "them into msvc options to call cl.exe.\n" \
+  "The msvc options may not exactly do the same as their gcc counterparts.\n" \
+  "\n" \
+  "Supported GCC options (see `man gcc' for more information):\n" \
+  "  -c -C -DDEFINE[=ARG] -fconstexpr-depth=num -ffp-contract=fast|off\n" \
+  "  -finline-functions -fno-inline -fno-rtti -fno-threadsafe-statics\n" \
+  "  -fomit-frame-pointer -fopenmp -fpermissive -fsized-deallocation -fstack-check\n" \
+  "  -fstack-protector -funsigned-char -fwhole-program -g -include file -I path\n" \
+  "  -llibname -L path -mavx -mavx2 -mdll -msse -msse2 -nodefaultlibs -nostdinc\n" \
+  "  -nostdinc++ -nostdlib -O0 -O1 -O2 -O3 -Os -o file -print-search-dirs -shared\n" \
+  "  -std=c<..>|gnu<..> -trigraphs -UDEFINE -w -Wall -Werror -Wextra\n" \
+  "  -Wl,--out-implib,libname -Wl,-output-def,defname -Wl,--whole-archive -x <c|c++>\n" \
+  "\n" \
+  "Other options:\n" \
+  "  --help                display this information\n" \
+  "  --help-cl             display cl.exe's help information\n" \
+  "  --help-link           display link.exe's help information\n" \
+  "  --verbose             print commands\n" \
+  "  --print-only          print commands and don't to anything\n" \
+  "  --cl=path             path to cl.exe\n" \
+  "  -Wcl,arg -Wlink,arg   parse msvc options directly to cl.exe/link.exe\n" \
+  "\n" \
+  "Environment variables:\n" \
+  "  CL_CMD      path to cl.exe\n" \
+  "\n" \
+  "See also https://msdn.microsoft.com/en-us/library/19z1t1wy.aspx\n"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,31 +115,10 @@ std::string unix_path(std::string str)
   return str;
 }
 
-#define USAGE "\n"\
-    "This program is a wrapper for msvc's cl.exe and intended to be used\n" \
-    "with Windows 10's \"Bash on Ubuntu on Windows\" shell.\n" \
-    "It is invoked with gcc options (only a limited number) and turns\n" \
-    "them into msvc options to call cl.exe.\n" \
-    "The msvc options may not exactly do the same as their gcc counterparts.\n" \
-    "\n" \
-    "Supported GCC options (see `man gcc' for more information):\n" \
-    "  -c -C -DDEFINE[=ARG] -fconstexpr-depth=num -ffp-contract=fast|off\n" \
-    "  -finline-functions -fno-inline -fno-rtti -fno-threadsafe-statics\n" \
-    "  -fomit-frame-pointer -fopenmp -fpermissive -fsized-deallocation -fstack-check\n" \
-    "  -fstack-protector -funsigned-char -fwhole-program -g -include file -I path\n" \
-    "  -llibname -L path -mavx -mavx2 -mdll -msse -msse2 -nodefaultlibs -nostdinc\n" \
-    "  -nostdinc++ -nostdlib -O0 -O1 -O2 -O3 -Os -o file -print-search-dirs -shared\n" \
-    "  -std=c<..>|gnu<..> -trigraphs -UDEFINE -w -Wall -Werror -Wextra\n" \
-    "  -Wl,--out-implib,libname -Wl,-output-def,defname -Wl,--whole-archive -x <c|c++>\n" \
-    "\n" \
-    "Other options:\n" \
-    "  --verbose             print commands\n" \
-    "  --print-only          print commands and don't to anything\n" \
-    "  --cl=path             path to cl.exe\n" \
-    "  -Wcl,arg -Wlink,arg   parse options directly to cl.exe/link.exe\n" \
-    "\n" \
-    "Environment variables:\n" \
-    "  CL_CMD      path to cl.exe\n"
+void print_help(char *self)
+{
+  std::cout << "Usage: " << self << " [options] file...\n" << USAGE << std::endl;
+}
 
 
 int main(int argc, char **argv)
@@ -137,23 +142,6 @@ int main(int argc, char **argv)
 
     for (int i = 1; i < argc; ++i)
     {
-        str = STR(argv[i]);
-        if (str == "-?" || str == "-h" || str == "-help" || str == "--help")
-        {
-            std::cout << "Usage: " << argv[0] << " [options] file...\n"
-                << USAGE "\n"
-                << "For original msvc options run\n"
-                << "  '" << cl_cmd << "' /help\n"
-                << "or\n"
-                << "  '" << cl_cmd.substr(0, cl_cmd.find_last_of("/\\")) /*dirname()*/ << "/link.exe'\n"
-                << "or visit https://msdn.microsoft.com/en-us/library/19z1t1wy.aspx\n"
-                << std::endl;
-            return 0;
-        }
-    }
-
-    for (int i = 1; i < argc; ++i)
-    {
         int len = strlen(argv[i]);
         char *arg = argv[i];
         str = STR(argv[i]);
@@ -162,24 +150,44 @@ int main(int argc, char **argv)
         {
             if (arg[1] == '-')
             {
-                // print commands
                 if (str == "--verbose")
                 {
                     verbose = true;
                 }
-                // print commands and don't to anything
                 if (str == "--print-only")
                 {
                     verbose = print_only = true;
                 }
-                // path to cl.exe (driver)
                 else if (STRNEQ(arg, "--cl=", 5))
                 {
                     cl_cmd = STR(arg+5);
                 }
+                else if (str == "--help")
+                {
+                    print_help(argv[0]); return 0;
+                }
+                else if (STRNEQ(arg, "--help-", 7))
+                {
+                    if (str == "--help-cl")
+                    {
+                        cl_cmd = "'" + cl_cmd + "' /help";
+                        return system(cl_cmd.c_str());
+                    }
+                    else if (str == "--help-link")
+                    {
+                        // like 'dirname(cl_cmd)'
+                        cl_cmd = "'" + cl_cmd.substr(0, cl_cmd.find_last_of("/\\")) + "/link.exe'";
+                        return system(cl_cmd.c_str());
+                    }
+                }
             }
             else
             {
+                if ((arg[1] == '?' || arg[1] == 'h') && (len == 2 || str == "-help"))
+                {
+                    print_help(argv[0]);
+                    return 0;
+                }
                 // -c -C -w
                 if (len == 2 && (arg[1] == 'c' || arg[1] == 'C' || arg[1] == 'w'))
                 {
