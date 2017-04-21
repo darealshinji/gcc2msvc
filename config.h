@@ -31,6 +31,7 @@
 #endif
 
 #ifndef DEFAULT_CL_CMD
+//# define DEFAULT_CL_CMD "c:\\" PROGRAM_FILES "\\Microsoft Visual Studio\\2017\\Community\\VC\\Tools\\MSVC\\" MSVC_VER "\\bin\\" MSVC_HOST "\\" MSVC_TARGET "\\cl.exe"
 # define DEFAULT_CL_CMD "/mnt/c/" PROGRAM_FILES "/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/" MSVC_VER "/bin/" MSVC_HOST "/" MSVC_TARGET "/cl.exe"
 #endif
 

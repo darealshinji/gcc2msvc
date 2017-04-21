@@ -40,25 +40,53 @@
 #define STR(x) std::string(x)
 
 
-void repstr(const std::string &from, const std::string &to, std::string &s)
+void fromto(const std::string &from, const std::string &to, std::string &str)
 {
-  if (!from.empty())
+  size_t pos;
+
+  for (pos = 0; (pos = str.find(from, pos)) != std::string::npos; ++pos /*pos += to.size()*/)
   {
-    for (size_t pos = 0; (pos = s.find(from, pos)) != std::string::npos; pos += to.size())
-    {
-      s.replace(pos, from.size(), to);
-    }
+    str.replace(pos, 1 /*from.size()*/, to);
   }
 }
 
-std::string win_path(std::string str)
+// C: is mounted as "/mnt/c", D: as "/mnt/d", and so on
+
+std::string win_path(char *ch)
 {
-    if (str.substr(0,5) == "/mnt/" && str.substr(7) == "/")
+  char *rp;
+  std::string str;
+
+  rp = realpath(ch, NULL);
+  str = std::string(rp);
+  free(rp);
+
+  if (str.substr(0,5) == "/mnt/" && str.substr(6,1) == "/")
+  {
+    str = str.substr(5,1) + ":" + str.substr(6);
+  }
+
+  fromto("/", "\\", str);
+  return str;
+}
+
+std::string unix_path(std::string str)
+{
+  std::locale loc;
+  std::string drive;
+
+  if (str.substr(1,2) == ":\\")
+  {
+    drive = str.substr(0,1);
+    if (drive.find_first_not_of("CDEFGHIJKLMNOPQRSTUVWXYZAB") == std::string::npos)
     {
-        str = str.substr(5,1) + ":" + str.substr(6);
+      drive = std::tolower(drive[0], loc);
     }
-    repstr("/", "\\", str);
-    return str;
+    str = "/mnt/" + drive + str.substr(2);
+  }
+
+  fromto("\\", "/", str);
+  return str;
 }
 
 #define USAGE "\n"\
@@ -81,11 +109,11 @@ std::string win_path(std::string str)
     "Other options:\n" \
     "  --verbose             print commands\n" \
     "  --print-only          print commands and don't to anything\n" \
-    "  --cl=path             path to cl.exe (UNIX path)\n" \
+    "  --cl=path             path to cl.exe\n" \
     "  -Wcl,arg -Wlink,arg   parse options directly to cl.exe/link.exe\n" \
     "\n" \
     "Environment variables:\n" \
-    "  CL_CMD      path to cl.exe (UNIX path)\n"
+    "  CL_CMD      path to cl.exe\n"
 
 
 int main(int argc, char **argv)
@@ -218,12 +246,12 @@ int main(int argc, char **argv)
                         ++i;
                         if (i < argc)
                         {
-                            cmd += " /" + str.substr(1,1) + "'" + win_path(STR(argv[i])) + "'";
+                            cmd += " /" + str.substr(1,1) + "'" + win_path(argv[i]) + "'";
                         }
                     }
                     else
                     {
-                        cmd += " /" + str.substr(1,1) + "'" + win_path(STR(arg+2)) + "'";
+                        cmd += " /" + str.substr(1,1) + "'" + win_path(arg+2) + "'";
                     }
                 }
                 // -L path
@@ -234,12 +262,12 @@ int main(int argc, char **argv)
                         ++i;
                         if (i < argc)
                         {
-                            lnk += " /libpath:'" + win_path(STR(argv[i])) + "'";
+                            lnk += " /libpath:'" + win_path(argv[i]) + "'";
                         }
                     }
                     else
                     {
-                        lnk += " /libpath:'" + win_path(STR(arg+2)) + "'";
+                        lnk += " /libpath:'" + win_path(arg+2) + "'";
                     }
                 }
                 // -llibname
@@ -555,7 +583,7 @@ int main(int argc, char **argv)
         cmd += " /link" + lnk;
     }
 
-    cmd = "'" + cl_cmd + "'" + cmd;
+    cmd = "'" + unix_path(cl_cmd) + "'" + cmd;
 
     if (verbose)
     {
