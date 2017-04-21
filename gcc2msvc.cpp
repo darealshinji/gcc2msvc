@@ -82,16 +82,16 @@ bool _begins(const char *p, const char *str, size_t len)
   return false;
 }
 
-// maximum total path length of 32767 as described in
-// https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247(v=vs.85).aspx#maxpath
-char resolved_path[32767];
-
 // C: is mounted as "/mnt/c", D: as "/mnt/d", and so on;
 // forward slashes (/) are not converted to backslashes (\)
 // because Windows actually supports them
 std::string win_path(char *ch)
 {
   std::string str;
+
+  // maximum total path length as described in
+  // https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247(v=vs.85).aspx#maxpath
+  char resolved_path[32767];
 
   char *p = realpath(ch, resolved_path);
   int errval = errno;
@@ -108,17 +108,17 @@ std::string win_path(char *ch)
 
   if (str.substr(0,5) == "/mnt/" && str.substr(6,1) == "/")
   {
-    /* /mnt/c/some/dir -> c:/some/dir */
+    // /mnt/c/some/dir -> c:/some/dir
     str = str.substr(5,1) + ":" + str.substr(6);
   }
   else if (str.substr(0,5) == "/mnt/" && std::string::npos)
   {
-    /* /mnt/c -> c:/ */
+    // /mnt/c -> c:/
     str = str.substr(5,1) + ":/";
   }
   else if (ch[0] == '/')
   {
-    /* /usr/include -> ./usr/include */
+    // /usr/include -> ./usr/include
     str = "." + str;
   }
   else
