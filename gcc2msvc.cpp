@@ -62,9 +62,20 @@
 
 #include "config.h"
 
-#define STRNEQ(x,y,z) (strncmp(x,y,z) == 0 && len > z)
 #define STR(x) std::string(x)
 
+// check if the beginning of p equals str and if p is longer than str
+#define BEGINS(p,str) _begins(p, str, len)
+bool _begins(const char *p, const char *str, size_t len)
+{
+  size_t n = strlen(str);
+
+  if (strncmp(p, str, n) == 0 && len > n)
+  {
+    return true;
+  }
+  return false;
+}
 
 void fromto(const std::string &from, const std::string &to, std::string &str)
 {
@@ -123,21 +134,21 @@ void print_help(char *self)
 
 int main(int argc, char **argv)
 {
-    std::string str, cmd, lnk, cl_cmd;
-    cmd = lnk = cl_cmd = "";
+    std::string str, cmd, lnk, driver;
+    cmd = lnk = driver = "";
 
     bool verbose, print_only, have_outname, do_link, default_include_paths, default_lib_paths, rtti, threadsafe_statics;
     verbose = print_only = have_outname = false;
     do_link = default_include_paths = default_lib_paths = rtti = threadsafe_statics = true;
 
-    char *cl_cmd_env = getenv("CL_CMD");
-    if (cl_cmd_env != NULL)
+    char *driver_env = getenv("CL_CMD");
+    if (driver_env != NULL)
     {
-        cl_cmd = STR(cl_cmd_env);
+        driver = STR(driver_env);
     }
-    if (cl_cmd == "")
+    if (driver == "")
     {
-        cl_cmd = DEFAULT_CL_CMD;
+        driver = DEFAULT_CL_CMD;
     }
 
     for (int i = 1; i < argc; ++i)
@@ -158,26 +169,26 @@ int main(int argc, char **argv)
                 {
                     verbose = print_only = true;
                 }
-                else if (STRNEQ(arg, "--cl=", 5))
+                else if (BEGINS(arg, "--cl="))
                 {
-                    cl_cmd = STR(arg+5);
+                    driver = STR(arg+5);
                 }
                 else if (str == "--help")
                 {
                     print_help(argv[0]); return 0;
                 }
-                else if (STRNEQ(arg, "--help-", 7))
+                else if (BEGINS(arg, "--help-"))
                 {
                     if (str == "--help-cl")
                     {
-                        cl_cmd = "'" + cl_cmd + "' /help";
-                        return system(cl_cmd.c_str());
+                        driver = "'" + driver + "' /help";
+                        return system(driver.c_str());
                     }
                     else if (str == "--help-link")
                     {
-                        // like 'dirname(cl_cmd)'
-                        cl_cmd = "'" + cl_cmd.substr(0, cl_cmd.find_last_of("/\\")) + "/link.exe'";
-                        return system(cl_cmd.c_str());
+                        // like 'dirname(driver)'
+                        driver = "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe'";
+                        return system(driver.c_str());
                     }
                 }
             }
@@ -341,26 +352,26 @@ int main(int argc, char **argv)
                         {
                             lnk += " /wholearchive";
                         }
-                        else if (STRNEQ(lopt.c_str(), "--out-implib,", 13))
+                        else if (BEGINS(lopt.c_str(), "--out-implib,"))
                         {
                             lnk += " /implib:'" + STR(arg+17) + "'";
                         }
                         else if (str == "-Wl,--out-implib")
                         {
                             ++i;
-                            if (i < argc && STRNEQ(argv[i], "-Wl,", 4))
+                            if (i < argc && BEGINS(argv[i], "-Wl,"))
                             {
                                 lnk += " /implib:'" + STR(argv[i]+4) + "'";
                             }
                         }
-                        else if (STRNEQ(lopt.c_str(), "-output-def,", 12))
+                        else if (BEGINS(lopt.c_str(), "-output-def,"))
                         {
                             lnk += " /def:'" + STR(arg+16) + "'";
                         }
                         else if (str == "-Wl,-output-def")
                         {
                             ++i;
-                            if (i < argc && STRNEQ(argv[i], "-Wl,", 4))
+                            if (i < argc && BEGINS(argv[i], "-Wl,"))
                             {
                                 lnk += " /def:'" + STR(argv[i]+4) + "'";
                             }
@@ -373,7 +384,7 @@ int main(int argc, char **argv)
                                 lnk += " " + STR(argv[i]);
                             }
                         }
-                        else if (STRNEQ(argv[i], "-Wlink,", 7))
+                        else if (BEGINS(argv[i], "-Wlink,"))
                         {
                             lnk += " " + STR(arg+7);
                         }
@@ -386,7 +397,7 @@ int main(int argc, char **argv)
                             cmd += " " + STR(argv[i]);
                         }
                     }
-                    else if (STRNEQ(argv[i], "-Wcl,", 5))
+                    else if (BEGINS(argv[i], "-Wcl,"))
                     {
                         cmd += " " + STR(arg+5);
                     }
@@ -433,7 +444,7 @@ int main(int argc, char **argv)
                 // -ffp-contract=fast|off -fwhole-program
                 else if (arg[1] == 'f' && len > 2)
                 {
-                    if (STRNEQ(arg, "-fno-", 5))
+                    if (BEGINS(arg, "-fno-"))
                     {
                         if (str == "-fno-rtti")
                         {
@@ -478,11 +489,11 @@ int main(int argc, char **argv)
                         {
                             cmd += " /Zc:sizedDealloc";
                         }
-                        else if (STRNEQ(arg, "-fconstexpr-depth=", 18))
+                        else if (BEGINS(arg, "-fconstexpr-depth="))
                         {
                             cmd += " /constexpr:depth" + STR(arg+18);
                         }
-                        else if (STRNEQ(arg, "-ffp-contract=", 14))
+                        else if (BEGINS(arg, "-ffp-contract="))
                         {
                             if (STR(arg+14) == "fast")
                             {
@@ -523,9 +534,9 @@ int main(int argc, char **argv)
                     {
                         cmd += " /LD";
                     }
-                    else if (STRNEQ(arg, "-std=", 5))
+                    else if (BEGINS(arg, "-std="))
                     {
-                        if (STRNEQ(arg, "-std=gnu", 8))
+                        if (BEGINS(arg, "-std=gnu"))
                         {
                             cmd += " /std:c" + STR(arg+8);
                         }
@@ -591,7 +602,7 @@ int main(int argc, char **argv)
         cmd += " /link" + lnk;
     }
 
-    cmd = "'" + unix_path(cl_cmd) + "'" + cmd;
+    cmd = "'" + unix_path(driver) + "'" + cmd;
 
     if (verbose)
     {
