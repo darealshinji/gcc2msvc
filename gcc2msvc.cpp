@@ -143,513 +143,379 @@ void print_help(char *self)
 
 int main(int argc, char **argv)
 {
-    std::string str, cmd, lnk, driver;
-    cmd = lnk = driver = "";
+  std::string str, cmd, lnk, driver;
+  cmd = lnk = driver = "";
 
-    bool verbose, print_only, have_outname, do_link, default_include_paths, default_lib_paths, rtti, threadsafe_statics;
-    verbose = print_only = have_outname = false;
-    do_link = default_include_paths = default_lib_paths = rtti = threadsafe_statics = true;
+  bool verbose, print_only, have_outname, do_link, default_include_paths, default_lib_paths;
+  verbose = print_only = have_outname = false;
+  do_link = default_include_paths = default_lib_paths = true;
 
-    char *driver_env = getenv("CL_CMD");
-    if (driver_env != NULL)
+  // gcc has enabled these by default unless explicitly disabled
+  // with -fno-rtti -fno-threadsafe-statics, so let's do the same
+  bool rtti = true;
+  bool threadsafe_statics = true;
+
+  char *driver_env = getenv("CL_CMD");
+  if (driver_env != NULL)
+  {
+    driver = STR(driver_env);
+  }
+  if (driver == "")
+  {
+    driver = DEFAULT_CL_CMD;
+  }
+
+  for (int i = 1; i < argc; ++i)
+  {
+    size_t len = strlen(argv[i]);
+    char *arg = argv[i];
+    str = STR(argv[i]);
+
+    if (arg[0] == '-')
     {
-        driver = STR(driver_env);
-    }
-    if (driver == "")
-    {
-        driver = DEFAULT_CL_CMD;
-    }
-
-    for (int i = 1; i < argc; ++i)
-    {
-        int len = strlen(argv[i]);
-        char *arg = argv[i];
-        str = STR(argv[i]);
-
-        if (arg[0] == '-')
-        {
-            if (arg[1] == '-')
-            {
-                if (str == "--verbose")
-                {
-                    verbose = true;
-                }
-                if (str == "--print-only")
-                {
-                    verbose = print_only = true;
-                }
-                else if (BEGINS(arg, "--cl="))
-                {
-                    driver = STR(arg+5);
-                }
-                else if (str == "--help")
-                {
-                    print_help(argv[0]); return 0;
-                }
-                else if (BEGINS(arg, "--help-"))
-                {
-                    if (str == "--help-cl")
-                    {
-                        driver = "'" + driver + "' /help";
-                        return system(driver.c_str());
-                    }
-                    else if (str == "--help-link")
-                    {
-                        // like 'dirname(driver)'
-                        driver = "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe'";
-                        return system(driver.c_str());
-                    }
-                }
-            }
-            else
-            {
-                if ((arg[1] == '?' || arg[1] == 'h') && (len == 2 || str == "-help"))
-                {
-                    print_help(argv[0]);
-                    return 0;
-                }
-                // -c -C -w
-                if (len == 2 && (arg[1] == 'c' || arg[1] == 'C' || arg[1] == 'w'))
-                {
-                    cmd += " /" + std::string(arg+1);
-                    if (arg[1] == 'c')
-                    {
-                        do_link = false;
-                    }
-                }
-                // -x c  -x c++
-                else if (arg[1] == 'x')
-                {
-                    if (str == "-x")
-                    {
-                        ++i;
-                        if (i < argc)
-                        {
-                            if (STR(argv[i]) == "c")
-                            {
-                                cmd += " /TC";
-                            }
-                            else if (STR(argv[i]) == "c++")
-                            {
-                                cmd += " /TP";
-                            }
-                        }
-                    }
-                    else if (str == "-xc")
-                    {
-                        cmd += " /TC";
-                    }
-                    else if (str == "-xc++")
-                    {
-                        cmd += " /TP";
-                    }
-                }
-                // -g
-                else if (arg[1] == 'g' && len == 2)
-                {
-                    cmd += " /Zi";
-                }
-                // -o file
-                else if (arg[1] == 'o')
-                {
-                    if (len == 2)
-                    {
-                        ++i;
-                        if (i < argc)
-                        {
-                            lnk += " /out:'" + STR(argv[i]) + "'";
-                        }
-                    }
-                    else
-                    {
-                        lnk += " /out:'" + STR(arg+2) + "'";
-                    }
-                    have_outname = true;
-                }
-                // -I path  -DDEFINE[=ARG]  -UDEFINE
-                else if (arg[1] == 'I' || arg[1] == 'D' || arg[1] == 'U')
-                {
-                    if (len == 2)
-                    {
-                        ++i;
-                        if (i < argc)
-                        {
-                            cmd += " /" + str.substr(1,1) + "'" + win_path(argv[i]) + "'";
-                        }
-                    }
-                    else
-                    {
-                        cmd += " /" + str.substr(1,1) + "'" + win_path(arg+2) + "'";
-                    }
-                }
-                // -L path
-                else if (arg[1] == 'L')
-                {
-                    if (len == 2)
-                    {
-                        ++i;
-                        if (i < argc)
-                        {
-                            lnk += " /libpath:'" + win_path(argv[i]) + "'";
-                        }
-                    }
-                    else
-                    {
-                        lnk += " /libpath:'" + win_path(arg+2) + "'";
-                    }
-                }
-                // -llibname
-                else if (arg[1] == 'l' && len > 2)
-                {
-                    if (str == "-lmsvcrt")
-                    {
-                        cmd += " /MD";
-                    }
-                    else if (str == "-llibcmt")
-                    {
-                        cmd += " /MT";
-                    }
-                    else if (str != "-lc" && str != "-lm" && str != "-lrt" && str != "-lstdc++" && str != "-lgcc_s")
-                    {
-                        lnk += " '" + STR(arg+2) + ".lib'";
-                    }
-                }
-                // -O0 -O1 -O2 -O3 -Os
-                else if (arg[1] == 'O' && len == 3)
-                {
-                    if (arg[2] == '1' || arg[2] == '2')
-                    {
-                        cmd += " /O2 /Ot";
-                    }
-                    else if (arg[2] == '3')
-                    {
-                        cmd += " /Ox";
-                    }
-                    else if (arg[2] == 's')
-                    {
-                        cmd += " /O1 /Os";
-                    }
-                    else if (arg[2] == '0')
-                    {
-                        cmd += " /Od";
-                    }
-                }
-                // -Wl,--whole-archive
-                // -Wl,--out-implib,libname
-                // -Wl,-output-def,defname
-                // -Wall -Wextra -Werror
-                // -Wcl,arg -Wlink,arg    parse options directly to cl.exe/link.exe (wrapper)
-                else if (arg[1] == 'W' && len > 2)
-                {
-                    if (arg[2] == 'l')
-                    {
-                        std::string lopt = "";
-                        if (len == 3)
-                        {
-                            ++i;
-                            if (i < argc)
-                            {
-                                lopt = STR(argv[i]);
-                            }
-                        }
-                        else
-                        {
-                            lopt = STR(arg+4);
-                        }
-
-                        if (lopt == "--whole-archive")
-                        {
-                            lnk += " /wholearchive";
-                        }
-                        else if (BEGINS(lopt.c_str(), "--out-implib,"))
-                        {
-                            lnk += " /implib:'" + STR(arg+17) + "'";
-                        }
-                        else if (str == "-Wl,--out-implib")
-                        {
-                            ++i;
-                            if (i < argc && BEGINS(argv[i], "-Wl,"))
-                            {
-                                lnk += " /implib:'" + STR(argv[i]+4) + "'";
-                            }
-                        }
-                        else if (BEGINS(lopt.c_str(), "-output-def,"))
-                        {
-                            lnk += " /def:'" + STR(arg+16) + "'";
-                        }
-                        else if (str == "-Wl,-output-def")
-                        {
-                            ++i;
-                            if (i < argc && BEGINS(argv[i], "-Wl,"))
-                            {
-                                lnk += " /def:'" + STR(argv[i]+4) + "'";
-                            }
-                        }
-                        else if (str == "-Wlink")
-                        {
-                            ++i;
-                            if (i < argc)
-                            {
-                                lnk += " " + STR(argv[i]);
-                            }
-                        }
-                        else if (BEGINS(argv[i], "-Wlink,"))
-                        {
-                            lnk += " " + STR(arg+7);
-                        }
-                    }
-                    else if (str == "-Wcl")
-                    {
-                        ++i;
-                        if (i < argc)
-                        {
-                            cmd += " " + STR(argv[i]);
-                        }
-                    }
-                    else if (BEGINS(argv[i], "-Wcl,"))
-                    {
-                        cmd += " " + STR(arg+5);
-                    }
-                    else if (str == "-Wall")
-                    {
-                        cmd += " /W3";
-                    }
-                    else if (str == "-Wextra")
-                    {
-                        cmd += " /Wall";
-                    }
-                    else if (str == "-Werror")
-                    {
-                        cmd += " /WX";
-                    }
-                }
-                // -mdll -msse -msse2 -mavx -mavx2
-                else if (arg[1] == 'm' && len > 2)
-                {
-                    if (str == "-mdll")
-                    {
-                        cmd += " /LD";
-                    }
-                    else if (str == "-msse")
-                    {
-                        cmd += " /arch:SSE";
-                    }
-                    else if (str == "-msse2")
-                    {
-                        cmd += " /arch:SSE2";
-                    }
-                    else if (str == "-mavx")
-                    {
-                        cmd += " /arch:AVX";
-                    }
-                    else if (str == "-mavx2")
-                    {
-                        cmd += " /arch:AVX2";
-                    }
-                }
-                // -fno-rtti -fno-threadsafe-statics -fno-inline -fomit-frame-pointer
-                // -fpermissive -finline-functions -fopenmp -fstack-protector -fstack-check
-                // -funsigned-char -fsized-deallocation -fconstexpr-depth=num
-                // -ffp-contract=fast|off -fwhole-program
-                else if (arg[1] == 'f' && len > 2)
-                {
-                    if (BEGINS(arg, "-fno-"))
-                    {
-                        if (str == "-fno-rtti")
-                        {
-                            rtti = false;
-                        }
-                        else if (str == "-fno-threadsafe-statics")
-                        {
-                            threadsafe_statics = false;
-                        }
-                        else if (str == "-fno-inline")
-                        {
-                            cmd += " /Ob0";
-                        }
-                    }
-                    else
-                    {
-                        if (str == "-fomit-frame-pointer")
-                        {
-                            cmd += " /Oy";
-                        }
-                        else if (str == "-fpermissive")
-                        {
-                            cmd += " /permissive";
-                        }
-                        else if (str == "-finline-functions")
-                        {
-                            cmd += " /Ob2";
-                        }
-                        else if (str == "-fopenmp")
-                        {
-                            cmd += " /openmp";
-                        }
-                        else if (str == "-fstack-protector" || str == "-fstack-check")
-                        {
-                            cmd += " /GS";
-                        }
-                        else if (str == "-funsigned-char")
-                        {
-                            cmd += " /J";
-                        }
-                        else if (str == "-fsized-deallocation")
-                        {
-                            cmd += " /Zc:sizedDealloc";
-                        }
-                        else if (BEGINS(arg, "-fconstexpr-depth="))
-                        {
-                            cmd += " /constexpr:depth" + STR(arg+18);
-                        }
-                        else if (BEGINS(arg, "-ffp-contract="))
-                        {
-                            if (STR(arg+14) == "fast")
-                            {
-                                cmd += " /fp:fast";
-                            }
-                            else if (STR(arg+14) == "off")
-                            {
-                                cmd += " /fp:strict";
-                            }
-                        }
-                        else if (str == "-fwhole-program")
-                        {
-                            cmd += " /GL";
-                        }
-                    }
-                }
-                // -nostdinc -nostdinc++ -nostdlib -nodefaultlibs
-                else if (arg[1] == 'n' && len > 8)
-                {
-                    if (str == "-nostdinc" || str == "-nostdinc++")
-                    {
-                        default_include_paths = false;
-                    }
-                    else if (str == "-nostdlib")
-                    {
-                        default_lib_paths = false;
-                    }
-                    else if (str == "-nodefaultlibs")
-                    {
-                        lnk += " /nodefaultlib";
-                        default_lib_paths = false;
-                    }
-                }
-                // -shared -std=c<..>|gnu<..>
-                else if (arg[1] == 's' && len > 5)
-                {
-                    if (str == "-shared")
-                    {
-                        cmd += " /LD";
-                    }
-                    else if (BEGINS(arg, "-std="))
-                    {
-                        if (BEGINS(arg, "-std=gnu"))
-                        {
-                            cmd += " /std:c" + STR(arg+8);
-                        }
-                        else
-                        {
-                            cmd += " /std:" + STR(arg+5);
-                        }
-                    }
-                }
-                // -include file
-                else if (str == "-include")
-                {
-                    ++i;
-                    if (i < argc)
-                    {
-                        cmd += " /FI'" + STR(argv[i]) + "'";
-                    }
-                }
-                // -trigraphs
-                else if (str == "-trigraphs")
-                {
-                    cmd += " /Zc:trigraphs";
-                }
-                // -print-search-dirs
-                else if (str == "-print-search-dirs")
-                {
-                    std::cout << "cl.exe: " DEFAULT_CL_CMD "\n"
-                        << "includes: " DEFAULT_INCLUDES "\n"
-                        << "libraries: " DEFAULT_LIBPATHS << std::endl;
-                    return 0;
-                }
-            }
-        }
-        else
-        {
-            cmd += " '" + str + "'";
-        }
-    }
-
-    if (rtti)
-    {
-        cmd = " /GR" + cmd;
-    }
-    if (threadsafe_statics)
-    {
-        cmd = " /Zc:threadSafeInit" + cmd;
-    }
-    if (default_include_paths)
-    {
-        cmd += " " DEFAULT_INCLUDES;
-    }
-
-    if (do_link)
-    {
-        if (!have_outname)
-        {
-            lnk += " /out:'a.exe'";
-        }
-        if (default_lib_paths)
-        {
-            lnk += " " DEFAULT_LIBPATHS;
-        }
-        cmd += " /link" + lnk;
-    }
-
-    cmd = "'" + unix_path(driver) + "'" + cmd;
-
-    if (verbose)
-    {
-        std::cout << cmd << std::endl;
-    }
-    if (print_only)
-    {
-        return 0;
-    }
-
-    pid_t pid;
-    int status;
-    int ret = 1;
-
-    if ((pid = fork()) == 0)
-    {
-      execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
-      _exit(127);  /* if execl() was successful, this won't be reached */
-    }
-
-    if (pid > 0)
-    {
-      if (waitpid(pid, &status, 0) > 0)
+      if (arg[1] == '-')
       {
-        if (WIFEXITED(status) == 1)
+        if      (BEGINS(arg, "--cl="))   { driver = STR(arg+5); }
+        else if (str == "--verbose")     { verbose = true; }
+        else if (str == "--print-only")  { verbose = print_only = true; }
+        else if (str == "--help")        { print_help(argv[0]); return 0; }
+        else if (BEGINS(arg, "--help-"))
         {
-          ret = WEXITSTATUS(status);
-          if (ret == 127) {
-            errmsg("execl() failed");
+          if (str == "--help-cl")
+          {
+            driver = "'" + driver + "' /help";
+            return system(driver.c_str());
           }
-        } else {
-          errmsg("the program didn't terminate normally");
+          else if (str == "--help-link")
+          {
+            // like 'dirname(driver)'
+            driver = "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe'";
+            return system(driver.c_str());
+          }
+        }
+      }
+      else
+      {
+        if ((arg[1] == '?' || arg[1] == 'h') && (len == 2 || str == "-help"))
+        {
+          print_help(argv[0]);
+          return 0;
+        }
+
+        // -c -C -w
+        else if (str == "-c" || str == "-C" || str == "-w")
+        {
+          cmd += " /" + std::string(arg+1);
+          if (str == "-c") {
+            do_link = false;
+          }
+        }
+
+        // -g
+        else if (str == "-g")
+        {
+          cmd += " /Zi";
+        }
+
+        // -x c  -x c++
+        else if (arg[1] == 'x')
+        {
+          if (len == 2) {
+            ++i;
+            if (i < argc) {
+              if      (STR(argv[i]) == "c")   { cmd += " /TC"; }
+              else if (STR(argv[i]) == "c++") { cmd += " /TP"; }
+            }
+          }
+          else if (str == "-xc")   { cmd += " /TC"; }
+          else if (str == "-xc++") { cmd += " /TP"; }
+        }
+
+        // -o file
+        else if (arg[1] == 'o')
+        {
+          if (len == 2) {
+            ++i;
+            if (i < argc) {
+              lnk += " /out:'" + STR(argv[i]) + "'";
+            }
+          } else {
+            lnk += " /out:'" + STR(arg+2) + "'";
+          }
+          have_outname = true;
+        }
+
+        // -I path  -DDEFINE[=ARG]  -UDEFINE
+        else if (arg[1] == 'I' || arg[1] == 'D' || arg[1] == 'U')
+        {
+          if (len == 2) {
+            ++i;
+            if (i < argc) {
+              cmd += " /" + str.substr(1,1) + "'" + win_path(argv[i]) + "'";
+            }
+          } else {
+            cmd += " /" + str.substr(1,1) + "'" + win_path(arg+2) + "'";
+          }
+        }
+
+        // -L path
+        else if (arg[1] == 'L')
+        {
+          if (len == 2) {
+            ++i;
+            if (i < argc) {
+              lnk += " /libpath:'" + win_path(argv[i]) + "'";
+            }
+          } else {
+            lnk += " /libpath:'" + win_path(arg+2) + "'";
+          }
+        }
+
+        // -llibname
+        else if (arg[1] == 'l' && len > 2)
+        {
+          if      (str == "-lmsvcrt")   { cmd += " /MD"; }
+          else if (str == "-llibcmt")   { cmd += " /MT"; }
+          else if (str != "-lc"      &&
+                   str != "-lm"      &&
+                   str != "-lrt"     &&
+                   str != "-lstdc++" &&
+                   str != "-lgcc_s")    { lnk += " '" + STR(arg+2) + ".lib'"; }
+        }
+
+        // -O0 -O1 -O2 -O3 -Os
+        else if (arg[1] == 'O' && len == 3)
+        {
+          if      (arg[2] == '1' ||
+                   arg[2] == '2')   { cmd += " /O2 /Ot"; }
+          else if (arg[2] == '3')   { cmd += " /Ox";     }
+          else if (arg[2] == 's')   { cmd += " /O1 /Os"; }
+          else if (arg[2] == '0')   { cmd += " /Od";     }
+        }
+
+        // -Wl,--whole-archive
+        // -Wl,--out-implib,libname
+        // -Wl,-output-def,defname
+        // -Wall -Wextra -Werror
+        // -Wcl,arg -Wlink,arg
+        else if (arg[1] == 'W' && len > 2)
+        {
+          if (arg[2] == 'l')
+          {
+            std::string lopt;
+            if (len == 3) {
+              ++i;
+              if (i < argc) {
+                lopt = STR(argv[i]);
+              }
+            } else {
+              lopt = STR(arg+4);
+            }
+
+            if (lopt == "--whole-archive")
+            {
+              lnk += " /wholearchive";
+            }
+
+            else if (BEGINS(lopt.c_str(), "--out-implib,"))
+            {
+              lnk += " /implib:'" + STR(arg+17) + "'";
+            }
+            else if (str == "-Wl,--out-implib")
+            {
+              ++i;
+              if (i < argc && BEGINS(argv[i], "-Wl,")) {
+                lnk += " /implib:'" + STR(argv[i]+4) + "'";
+              }
+            }
+
+            else if (BEGINS(lopt.c_str(), "-output-def,"))
+            {
+              lnk += " /def:'" + STR(arg+16) + "'";
+            }
+            else if (str == "-Wl,-output-def")
+            {
+              ++i;
+              if (i < argc && BEGINS(argv[i], "-Wl,")) {
+                lnk += " /def:'" + STR(argv[i]+4) + "'";
+              }
+            }
+
+            else if (str == "-Wlink")
+            {
+              ++i;
+              if (i < argc) {
+                lnk += " " + STR(argv[i]);
+              }
+            }
+            else if (BEGINS(argv[i], "-Wlink,"))
+            {
+              lnk += " " + STR(arg+7);
+            }
+          }
+
+          else if (str == "-Wcl")
+          {
+            ++i;
+            if (i < argc) {
+              cmd += " " + STR(argv[i]);
+            }
+          }
+          else if (BEGINS(argv[i], "-Wcl,"))
+          {
+            cmd += " " + STR(arg+5);
+          }
+
+          else if (str == "-Wall")   { cmd += " /W3";   }
+          else if (str == "-Wextra") { cmd += " /Wall"; }
+          else if (str == "-Werror") { cmd += " /WX";   }
+        }
+
+        // -mdll -msse -msse2 -mavx -mavx2
+        else if (arg[1] == 'm' && len > 2)
+        {
+          if      (str == "-mdll")  { cmd += " /LD";        }
+          else if (str == "-msse")  { cmd += " /arch:SSE";  }
+          else if (str == "-msse2") { cmd += " /arch:SSE2"; }
+          else if (str == "-mavx")  { cmd += " /arch:AVX";  }
+          else if (str == "-mavx2") { cmd += " /arch:AVX2"; }
+        }
+
+        // -fno-rtti -fno-threadsafe-statics -fno-inline -fomit-frame-pointer
+        // -fpermissive -finline-functions -fopenmp -fstack-protector -fstack-check
+        // -funsigned-char -fsized-deallocation -fconstexpr-depth=num
+        // -ffp-contract=fast|off -fwhole-program
+        else if (arg[1] == 'f' && len > 2)
+        {
+          if (BEGINS(arg, "-fno-"))
+          {
+            if      (str == "-fno-rtti")                { rtti = false; }
+            else if (str == "-fno-threadsafe-statics")  { threadsafe_statics = false; }
+            else if (str == "-fno-inline")              { cmd += " /Ob0"; }
+          }
+          else
+          {
+            if      (str == "-fomit-frame-pointer")     { cmd += " /Oy";         }
+            else if (str == "-fpermissive")             { cmd += " /permissive"; }
+            else if (str == "-finline-functions")       { cmd += " /Ob2";        }
+            else if (str == "-fopenmp")                 { cmd += " /openmp";     }
+            else if (str == "-fstack-protector" ||
+                     str == "-fstack-check")            { cmd += " /GS";         }
+            else if (str == "-funsigned-char")          { cmd += " /J";          }
+            else if (str == "-fsized-deallocation")     { cmd += " /Zc:sizedDealloc"; }
+            else if (BEGINS(arg, "-fconstexpr-depth=")) { cmd += " /constexpr:depth" + STR(arg+18); }
+            else if (BEGINS(arg, "-ffp-contract="))
+            {
+              if      (STR(arg+14) == "fast")           { cmd += " /fp:fast";    }
+              else if (STR(arg+14) == "off")            { cmd += " /fp:strict";  }
+            }
+            else if (str == "-fwhole-program")          { cmd += " /GL";         }
+          }
+        }
+
+        // -nostdinc -nostdinc++ -nostdlib -nodefaultlibs
+        else if (arg[1] == 'n' && len > 8)
+        {
+          if      (str == "-nostdinc" ||
+                   str == "-nostdinc++")    { default_include_paths = false; }
+          else if (str == "-nostdlib")      { default_lib_paths = false;     }
+          else if (str == "-nodefaultlibs") { lnk += " /nodefaultlib";
+                                              default_lib_paths = false;     }
+        }
+
+        // -shared -std=c<..>|gnu<..>
+        else if (arg[1] == 's' && len > 5)
+        {
+          if      (str == "-shared")       { cmd += " /LD";                 }
+          else if (BEGINS(arg, "-std="))
+          {
+            if   (BEGINS(arg, "-std=gnu")) { cmd += " /std:c" + STR(arg+8); }
+            else                           { cmd += " /std:" + STR(arg+5);  }
+          }
+        }
+
+        // -include file
+        else if (str == "-include")
+        {
+          ++i;
+          if (i < argc) {
+            cmd += " /FI'" + STR(argv[i]) + "'";
+          }
+        }
+
+        // -trigraphs
+        else if (str == "-trigraphs")
+        {
+          cmd += " /Zc:trigraphs";
+        }
+
+        // -print-search-dirs
+        else if (str == "-print-search-dirs")
+        {
+          std::cout << "cl.exe: " DEFAULT_CL_CMD "\n"
+            << "includes: " DEFAULT_INCLUDES "\n"
+            << "libraries: " DEFAULT_LIBPATHS << std::endl;
+          return 0;
+        }
+      }
+    }
+    else
+    {
+      cmd += " '" + str + "'";
+    }
+  }
+
+  if (rtti)                  { cmd = " /GR" + cmd;                }
+  if (threadsafe_statics)    { cmd = " /Zc:threadSafeInit" + cmd; }
+  if (default_include_paths) { cmd += " " DEFAULT_INCLUDES;       }
+  if (do_link)
+  {
+    if (!have_outname)     { lnk += " /out:'a.exe'";      }
+    if (default_lib_paths) { lnk += " " DEFAULT_LIBPATHS; }
+    cmd += " /link" + lnk;
+  }
+
+  cmd = "'" + unix_path(driver) + "'" + cmd;
+
+  if (verbose)
+  {
+    std::cout << cmd << std::endl;
+  }
+  if (print_only)
+  {
+    return 0;
+  }
+
+  pid_t pid;
+  int status;
+  int ret = 1;
+
+  if ((pid = fork()) == 0)
+  {
+    execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
+    _exit(127);  /* if execl() was successful, this won't be reached */
+  }
+
+  if (pid > 0)
+  {
+    if (waitpid(pid, &status, 0) > 0)
+    {
+      if (WIFEXITED(status) == 1)
+      {
+        ret = WEXITSTATUS(status);
+        if (ret == 127) {
+          errmsg("execl() failed");
         }
       } else {
-        errmsg("waitpid() failed");
+        errmsg("the program didn't terminate normally");
       }
     } else {
-      errmsg("failed to fork()");
+      errmsg("waitpid() failed");
     }
+  } else {
+    errmsg("failed to fork()");
+  }
+
+  return ret;
 }
 
