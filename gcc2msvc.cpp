@@ -52,13 +52,17 @@
   "\n" \
   "See also https://msdn.microsoft.com/en-us/library/19z1t1wy.aspx\n"
 
+#include <iostream>
+#include <locale>
+#include <string>
+
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libgen.h>
-
-#include <iostream>
-#include <string>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "config.h"
 
@@ -124,6 +128,11 @@ std::string unix_path(std::string str)
 
   fromto("\\", "/", str);
   return str;
+}
+
+void errmsg(std::string msg)
+{
+  std::cerr << "error: " << msg << std::endl;
 }
 
 void print_help(char *self)
@@ -613,6 +622,34 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    return system(cmd.c_str());
+    pid_t pid;
+    int status;
+    int ret = 1;
+
+    if ((pid = fork()) == 0)
+    {
+      execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
+      _exit(127);  /* if execl() was successful, this won't be reached */
+    }
+
+    if (pid > 0)
+    {
+      if (waitpid(pid, &status, 0) > 0)
+      {
+        if (WIFEXITED(status) == 1)
+        {
+          ret = WEXITSTATUS(status);
+          if (ret == 127) {
+            errmsg("execl() failed");
+          }
+        } else {
+          errmsg("the program didn't terminate normally");
+        }
+      } else {
+        errmsg("waitpid() failed");
+      }
+    } else {
+      errmsg("failed to fork()");
+    }
 }
 

@@ -13,7 +13,7 @@ int main(){ fprintf(stdout, "%ls\n", wch); return 0; }
 EOF
 
 for file in "test.c" "test.cpp" ; do
-  ./gcc2msvc -O3 -Wcl,/EHsc $file -o ${file}.exe
+  ./gcc2msvc -Wall -g -O0 -Wcl,/EHsc $file -o ${file}.exe
 done
 
 echo ""

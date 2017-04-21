@@ -2,4 +2,6 @@
 /test.c
 /test.cpp
 *.obj
+*.ilk
+*.pdb
 *.exe
