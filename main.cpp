@@ -42,6 +42,7 @@
   "  --help                display this information\n" \
   "  --help-cl             display cl.exe's help information\n" \
   "  --help-link           display link.exe's help information\n" \
+  "  --version             display version information of cl.exe and link.exe\n" \
   "  --verbose             print commands\n" \
   "  --print-only          print commands and don't to anything\n" \
   "  --cl=path             path to cl.exe\n" \
@@ -169,14 +170,19 @@ int main(int argc, char **argv)
   std::string str, cmd, lnk, driver;
   cmd = lnk = driver = "";
 
-  bool verbose, print_only, have_outname, do_link, default_include_paths, default_lib_paths;
-  verbose = print_only = have_outname = false;
+  bool verbose, print_only, have_outname, do_link, help_cl, help_link, print_version;
+  bool default_include_paths, default_lib_paths;
+  verbose = print_only = have_outname = help_cl = help_link = print_version = false;
   do_link = default_include_paths = default_lib_paths = true;
 
   // gcc has enabled these by default unless explicitly disabled
   // with -fno-rtti -fno-threadsafe-statics, so let's do the same
   bool rtti = true;
   bool threadsafe_statics = true;
+
+  pid_t pid;
+  int status;
+  int ret = 1;
 
   char *driver_env = getenv("CL_CMD");
   if (driver_env != NULL)
@@ -198,24 +204,16 @@ int main(int argc, char **argv)
     {
       if (arg[1] == '-')
       {
-        if      (begins(arg, "--cl="))   { driver = STR(arg+5); }
-        else if (str == "--verbose")     { verbose = true; }
-        else if (str == "--print-only")  { verbose = print_only = true; }
+        if      (begins(arg, "--cl="))   { driver = STR(arg+5);  }
+        else if (str == "--verbose")     { verbose = true;       }
+        else if (str == "--print-only")  { verbose = print_only = true;   }
         else if (str == "--help")        { print_help(argv[0]); return 0; }
         else if (begins(arg, "--help-"))
         {
-          if (str == "--help-cl")
-          {
-            driver = "'" + driver + "' /help";
-            return system(driver.c_str());
-          }
-          else if (str == "--help-link")
-          {
-            // like 'dirname(driver)'
-            driver = "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe'";
-            return system(driver.c_str());
-          }
+          if      (str == "--help-cl")   { help_cl = true;       }
+          else if (str == "--help-link") { help_link = true;     }
         }
+        else if (str == "--version")     { print_version = true; }
       }
       else
       {
@@ -511,7 +509,26 @@ int main(int argc, char **argv)
     cmd += " /link" + lnk;
   }
 
-  cmd = "'" + unix_path(driver) + "'" + cmd;
+  driver = unix_path(driver);
+  cmd = "'" + driver + "'" + cmd;
+
+  if (help_cl)
+  {
+    // piping to cat helps to display the output correctly and in one go
+    cmd = "'" + driver + "' /help 2>&1 | cat";
+    return system(cmd.c_str());
+  }
+  else if (help_link)
+  {
+    cmd = "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe' 2>&1 | cat";
+    return system(cmd.c_str());
+  }
+  else if (print_version)
+  {
+    cmd = "'" + driver + "' /help 2>&1 | head -n3 ; "
+          "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe' 2>&1 | head -n3";
+    return system(cmd.c_str());
+  }
 
   if (verbose)
   {
@@ -522,14 +539,12 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  pid_t pid;
-  int status;
-  int ret = 1;
+  pid = fork();
 
-  if ((pid = fork()) == 0)
+  if (pid == 0)
   {
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
-    _exit(127);  /* if execl() was successful, this won't be reached */
+    _exit(127);  // if execl() was successful, this won't be reached
   }
 
   if (pid > 0)
