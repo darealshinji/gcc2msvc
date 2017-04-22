@@ -423,9 +423,9 @@ int main(int argc, char **argv)
         {
           if (begins(arg, "-fno-"))
           {
-            if      (str == "-fno-rtti")                { rtti = false; }
+            if      (str == "-fno-rtti")                { rtti = false;          }
             else if (str == "-fno-threadsafe-statics")  { threadsafe_statics = false; }
-            else if (str == "-fno-inline")              { cmd += " /Ob0"; }
+            else if (str == "-fno-inline")              { cmd += " /Ob0";        }
           }
           else
           {
@@ -460,7 +460,7 @@ int main(int argc, char **argv)
         // -shared -std=c<..>|gnu<..>
         else if (arg[1] == 's' && len > 5)
         {
-          if      (str == "-shared")       { cmd += " /LD";                 }
+          if      (str == "-shared")       { cmd += " /LD"; }
           else if (begins(arg, "-std="))
           {
             if   (begins(arg, "-std=gnu")) { cmd += " /std:c" + STR(arg+8); }
