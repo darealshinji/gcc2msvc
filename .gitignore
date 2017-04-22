@@ -1,7 +1,9 @@
 /gcc2msvc
 /gcc2msvc_test
+/config.h
 /tmp_test.*
 *.obj
 *.ilk
 *.pdb
 *.exe
+

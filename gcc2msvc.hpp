@@ -1,7 +1,7 @@
 #include <string>
 
 #ifdef TEST
-  void run_tests(void);
+void run_tests(void);
 #endif
 
 bool begins(const char *p, const char *str);

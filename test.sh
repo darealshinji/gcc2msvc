@@ -20,15 +20,19 @@ done
 
 echo ""
 echo "=== Testing ${tst}.c.exe ==="
+printf "file type: "
+file -b ${tst}.c.exe
 ./${tst}.c.exe
 
 echo ""
 echo "=== Testing ${tst}.cpp.exe ==="
+printf "file type: "
+file -b ${tst}.cpp.exe
 ./${tst}.cpp.exe
 
 echo ""
 echo "=== Testing path conversion ==="
-g++ -g -O2 -DTEST -o gcc2msvc_test run_tests.cpp gcc2msvc.cpp
+g++ -g -O2 -DTEST -o gcc2msvc_test run_tests.cpp main.cpp
 ./gcc2msvc_test
 echo ""
 
