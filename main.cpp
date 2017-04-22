@@ -171,8 +171,9 @@ int main(int argc, char **argv)
   cmd = lnk = driver = "";
 
   bool verbose, print_only, have_outname, do_link, help_cl, help_link, print_version;
-  bool default_include_paths, default_lib_paths;
-  verbose = print_only = have_outname = help_cl = help_link = print_version = false;
+  bool print_search_dirs, default_include_paths, default_lib_paths;
+  verbose = print_only = have_outname = print_search_dirs = false;
+  help_cl = help_link = print_version = false;
   do_link = default_include_paths = default_lib_paths = true;
 
   // gcc has enabled these by default unless explicitly disabled
@@ -486,10 +487,7 @@ int main(int argc, char **argv)
         // -print-search-dirs
         else if (str == "-print-search-dirs")
         {
-          std::cout << "cl.exe: " DEFAULT_CL_CMD "\n"
-            << "includes: " DEFAULT_INCLUDES "\n"
-            << "libraries: " DEFAULT_LIBPATHS << std::endl;
-          return 0;
+          print_search_dirs = true;
         }
       }
     }
@@ -528,6 +526,14 @@ int main(int argc, char **argv)
     cmd = "'" + driver + "' /help 2>&1 | head -n3 ; "
           "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe' 2>&1 | head -n3";
     return system(cmd.c_str());
+  }
+
+  if (print_search_dirs)
+  {
+    std::cout << "cl.exe: " DEFAULT_CL_CMD "\n"
+      << "includes: " DEFAULT_INCLUDES "\n"
+      << "libraries: " DEFAULT_LIBPATHS << std::endl;
+    return 0;
   }
 
   if (verbose)
