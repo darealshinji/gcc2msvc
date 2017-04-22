@@ -1,8 +1,8 @@
 BIN = gcc2msvc
 
-CXXFLAGS := -Wall -O3
+CXXFLAGS := -Wall -Wextra -O3
 LDFLAGS := -s
-CLEANFILES = $(BIN) test.c test.cpp *.obj *.ilk *.pdb *.exe
+CLEANFILES = $(BIN) $(BIN)_test test.c test.cpp *.obj *.ilk *.pdb *.exe
 
 
 all: $(BIN)

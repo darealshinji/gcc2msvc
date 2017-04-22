@@ -66,16 +66,16 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "gcc2msvc.h"
 
 #define STR(x) std::string(x)
 
 // check if the beginning of p equals str and if p is longer than str
-#define BEGINS(p,str) _begins(p, str, len)
-bool _begins(const char *p, const char *str, size_t len)
+bool begins(const char *p, const char *str)
 {
   size_t n = strlen(str);
 
-  if (strncmp(p, str, n) == 0 && len > n)
+  if (strncmp(p, str, n) == 0 && strlen(p) > n)
   {
     return true;
   }
@@ -87,43 +87,41 @@ bool _begins(const char *p, const char *str, size_t len)
 // because Windows actually supports them
 std::string win_path(char *ch)
 {
-  std::string str;
+  std::string str, drive;
 
-  // maximum total path length as described in
-  // https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247(v=vs.85).aspx#maxpath
-  char resolved_path[32767];
+  str = std::string(ch);
 
-  char *p = realpath(ch, resolved_path);
-  int errval = errno;
+  if (ch[0] == '/')
+  {
+    bool prepend = true;
 
-  // ignore ENOENT (file does not exist) errors
-  if (p == NULL && errval != ENOENT)
-  {
-    str = std::string(ch);
-  }
-  else
-  {
-    str = std::string(resolved_path);
-  }
+    if (begins(ch, "/mnt/"))
+    {
+      drive = str.substr(5,1);
 
-  if (str.substr(0,5) == "/mnt/" && str.substr(6,1) == "/")
-  {
-    // /mnt/c/some/dir -> c:/some/dir
-    str = str.substr(5,1) + ":" + str.substr(6);
-  }
-  else if (str.substr(0,5) == "/mnt/" && std::string::npos)
-  {
-    // /mnt/c -> c:/
-    str = str.substr(5,1) + ":/";
-  }
-  else if (ch[0] == '/')
-  {
-    // /usr/include -> ./usr/include
-    str = "." + str;
-  }
-  else
-  {
-    str = std::string(ch);
+      if (drive.find_first_not_of("cdefghijklmnopqrstuvwxyzab") == std::string::npos)
+      {
+        if (str.length() == 6)
+        {
+          // /mnt/d -> d:/
+          str = drive + ":/";
+          prepend = false;
+        }
+        else if (str.substr(6,1) == "/")
+        {
+          // /mnt/d/ -> d:/
+          // /mnt/d/dir -> d:/dir
+          str = drive + ":" + str.substr(6);
+          prepend = false;
+        }
+      }
+    }
+
+    if (prepend)
+    {
+      // /usr/include -> ./usr/include
+      str = "." + str;
+    }
   }
 
   return str;
@@ -161,6 +159,11 @@ void print_help(char *self)
 
 int main(int argc, char **argv)
 {
+#ifdef TEST
+  test_win_path();
+  return 0;
+#endif
+
   std::string str, cmd, lnk, driver;
   cmd = lnk = driver = "";
 
@@ -193,11 +196,11 @@ int main(int argc, char **argv)
     {
       if (arg[1] == '-')
       {
-        if      (BEGINS(arg, "--cl="))   { driver = STR(arg+5); }
+        if      (begins(arg, "--cl="))   { driver = STR(arg+5); }
         else if (str == "--verbose")     { verbose = true; }
         else if (str == "--print-only")  { verbose = print_only = true; }
         else if (str == "--help")        { print_help(argv[0]); return 0; }
-        else if (BEGINS(arg, "--help-"))
+        else if (begins(arg, "--help-"))
         {
           if (str == "--help-cl")
           {
@@ -348,26 +351,26 @@ int main(int argc, char **argv)
               lnk += " /wholearchive";
             }
 
-            else if (BEGINS(lopt.c_str(), "--out-implib,"))
+            else if (begins(lopt.c_str(), "--out-implib,"))
             {
               lnk += " /implib:'" + STR(arg+17) + "'";
             }
             else if (str == "-Wl,--out-implib")
             {
               ++i;
-              if (i < argc && BEGINS(argv[i], "-Wl,")) {
+              if (i < argc && begins(argv[i], "-Wl,")) {
                 lnk += " /implib:'" + STR(argv[i]+4) + "'";
               }
             }
 
-            else if (BEGINS(lopt.c_str(), "-output-def,"))
+            else if (begins(lopt.c_str(), "-output-def,"))
             {
               lnk += " /def:'" + STR(arg+16) + "'";
             }
             else if (str == "-Wl,-output-def")
             {
               ++i;
-              if (i < argc && BEGINS(argv[i], "-Wl,")) {
+              if (i < argc && begins(argv[i], "-Wl,")) {
                 lnk += " /def:'" + STR(argv[i]+4) + "'";
               }
             }
@@ -379,7 +382,7 @@ int main(int argc, char **argv)
                 lnk += " " + STR(argv[i]);
               }
             }
-            else if (BEGINS(argv[i], "-Wlink,"))
+            else if (begins(argv[i], "-Wlink,"))
             {
               lnk += " " + STR(arg+7);
             }
@@ -392,7 +395,7 @@ int main(int argc, char **argv)
               cmd += " " + STR(argv[i]);
             }
           }
-          else if (BEGINS(argv[i], "-Wcl,"))
+          else if (begins(argv[i], "-Wcl,"))
           {
             cmd += " " + STR(arg+5);
           }
@@ -418,7 +421,7 @@ int main(int argc, char **argv)
         // -ffp-contract=fast|off -fwhole-program
         else if (arg[1] == 'f' && len > 2)
         {
-          if (BEGINS(arg, "-fno-"))
+          if (begins(arg, "-fno-"))
           {
             if      (str == "-fno-rtti")                { rtti = false; }
             else if (str == "-fno-threadsafe-statics")  { threadsafe_statics = false; }
@@ -434,8 +437,8 @@ int main(int argc, char **argv)
                      str == "-fstack-check")            { cmd += " /GS";         }
             else if (str == "-funsigned-char")          { cmd += " /J";          }
             else if (str == "-fsized-deallocation")     { cmd += " /Zc:sizedDealloc"; }
-            else if (BEGINS(arg, "-fconstexpr-depth=")) { cmd += " /constexpr:depth" + STR(arg+18); }
-            else if (BEGINS(arg, "-ffp-contract="))
+            else if (begins(arg, "-fconstexpr-depth=")) { cmd += " /constexpr:depth" + STR(arg+18); }
+            else if (begins(arg, "-ffp-contract="))
             {
               if      (STR(arg+14) == "fast")           { cmd += " /fp:fast";    }
               else if (STR(arg+14) == "off")            { cmd += " /fp:strict";  }
@@ -458,9 +461,9 @@ int main(int argc, char **argv)
         else if (arg[1] == 's' && len > 5)
         {
           if      (str == "-shared")       { cmd += " /LD";                 }
-          else if (BEGINS(arg, "-std="))
+          else if (begins(arg, "-std="))
           {
-            if   (BEGINS(arg, "-std=gnu")) { cmd += " /std:c" + STR(arg+8); }
+            if   (begins(arg, "-std=gnu")) { cmd += " /std:c" + STR(arg+8); }
             else                           { cmd += " /std:" + STR(arg+5);  }
           }
         }
@@ -549,4 +552,69 @@ int main(int argc, char **argv)
 
   return ret;
 }
+
+#ifdef TEST
+void test_win_path()
+{
+# define CH (char *)
+  const int test_length = 17;
+
+  char *test_incs[test_length+1] = {
+    CH"/usr/include",
+    CH"/",
+    CH"mnt",
+    CH"/mnt",
+    CH"/mnt/",
+    CH"/mnt/d",
+    CH"/mnt/d/",
+    CH"/mnt/d/dir",
+    CH"/mnt/d/dir/",
+    CH"/mnt/dd",
+    CH"/mnt/dd/",
+    CH"/mnt/D",
+    CH"/mnt/D/",
+    CH"/mnt/./d",
+    CH"/mnt/./d/",
+    CH"/mnt/../d",
+    CH"/mnt/../d/",
+    NULL
+  };
+# undef CH
+
+  std::string test_expect[test_length] = {
+    "./usr/include",
+    "./",
+    "mnt",
+    "./mnt",
+    "./mnt/",
+    "d:/",
+    "d:/",
+    "d:/dir",
+    "d:/dir/",
+    "./mnt/dd",
+    "./mnt/dd/",
+    "./mnt/D",
+    "./mnt/D/",
+    "./mnt/./d",
+    "./mnt/./d/",
+    "./mnt/../d",
+    "./mnt/../d/"
+  };
+
+  for (int i=0; i < test_length; ++i)
+  {
+    std::cout << test_incs[i] << " => " << test_expect[i];
+
+    if (win_path(test_incs[i]) == test_expect[i])
+    {
+      std::cout << " [OK]" << std::endl;
+    }
+    else
+    {
+      std::cout << " [FAIL]" << std::endl;
+      std::cout << "result was: " << win_path(test_incs[i]) << std::endl;
+    }
+  }
+}
+#endif  /* TEST */
 
