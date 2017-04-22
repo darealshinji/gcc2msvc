@@ -1,6 +1,6 @@
 /gcc2msvc
-/test.c
-/test.cpp
+/gcc2msvc_test
+/tmp_test.*
 *.obj
 *.ilk
 *.pdb

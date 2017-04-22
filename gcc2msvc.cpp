@@ -66,7 +66,7 @@
 #include <unistd.h>
 
 #include "config.h"
-#include "gcc2msvc.h"
+#include "gcc2msvc.hpp"
 
 #define STR(x) std::string(x)
 
@@ -132,7 +132,9 @@ std::string unix_path(std::string str)
   std::locale loc;
   std::string drive;
 
-  if (str.substr(1,2) == ":\\")
+  std::string s(str.substr(1,2));
+
+  if (s == ":\\" || s == ":/" || s == ":")
   {
     drive = str.substr(0,1);
 
@@ -160,7 +162,7 @@ void print_help(char *self)
 int main(int argc, char **argv)
 {
 #ifdef TEST
-  test_win_path();
+  run_tests();
   return 0;
 #endif
 
@@ -272,10 +274,10 @@ int main(int argc, char **argv)
           if (len == 2) {
             ++i;
             if (i < argc) {
-              cmd += " /" + str.substr(1,1) + "'" + win_path(argv[i]) + "'";
+              cmd += " /I'" + win_path(argv[i]) + "'";
             }
           } else {
-            cmd += " /" + str.substr(1,1) + "'" + win_path(arg+2) + "'";
+            cmd += " /I'" + win_path(arg+2) + "'";
           }
         }
 
@@ -552,69 +554,4 @@ int main(int argc, char **argv)
 
   return ret;
 }
-
-#ifdef TEST
-void test_win_path()
-{
-# define CH (char *)
-  const int test_length = 17;
-
-  char *test_incs[test_length+1] = {
-    CH"/usr/include",
-    CH"/",
-    CH"mnt",
-    CH"/mnt",
-    CH"/mnt/",
-    CH"/mnt/d",
-    CH"/mnt/d/",
-    CH"/mnt/d/dir",
-    CH"/mnt/d/dir/",
-    CH"/mnt/dd",
-    CH"/mnt/dd/",
-    CH"/mnt/D",
-    CH"/mnt/D/",
-    CH"/mnt/./d",
-    CH"/mnt/./d/",
-    CH"/mnt/../d",
-    CH"/mnt/../d/",
-    NULL
-  };
-# undef CH
-
-  std::string test_expect[test_length] = {
-    "./usr/include",
-    "./",
-    "mnt",
-    "./mnt",
-    "./mnt/",
-    "d:/",
-    "d:/",
-    "d:/dir",
-    "d:/dir/",
-    "./mnt/dd",
-    "./mnt/dd/",
-    "./mnt/D",
-    "./mnt/D/",
-    "./mnt/./d",
-    "./mnt/./d/",
-    "./mnt/../d",
-    "./mnt/../d/"
-  };
-
-  for (int i=0; i < test_length; ++i)
-  {
-    std::cout << test_incs[i] << " => " << test_expect[i];
-
-    if (win_path(test_incs[i]) == test_expect[i])
-    {
-      std::cout << " [OK]" << std::endl;
-    }
-    else
-    {
-      std::cout << " [FAIL]" << std::endl;
-      std::cout << "result was: " << win_path(test_incs[i]) << std::endl;
-    }
-  }
-}
-#endif  /* TEST */
 

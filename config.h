@@ -1,19 +1,10 @@
-#ifndef MSVC_VER
-# define MSVC_VER "14.10.25017"
-#endif
-#ifndef WINKIT_VER
-# define WINKIT_VER "10.0.15063.0"
-#endif
+// adjust as needed
 
-#ifndef MSVC_HOST
-# define MSVC_HOST "HostX64"
-#endif
-#ifndef MSVC_TARGET
-# define MSVC_TARGET "x64"
-#endif
-#ifndef PROGRAM_FILES
-# define PROGRAM_FILES "Program Files (x86)"
-#endif
+#define MSVC_VER       "14.10.25017"
+#define WINKIT_VER     "10.0.15063.0"
+#define MSVC_HOST      "HostX64"
+#define MSVC_TARGET    "x64"
+#define PROGRAM_FILES  "Program Files (x86)"
 
 #ifndef DEFAULT_INCLUDES
 # define DEFAULT_INCLUDES "/I'.' " \
