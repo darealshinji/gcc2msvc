@@ -183,7 +183,7 @@ int main(int argc, char **argv)
 
   pid_t pid;
   int status;
-  int ret = 1;
+  int ret;
 
   char *driver_env = getenv("CL_CMD");
   if (driver_env != NULL)
@@ -545,6 +545,7 @@ int main(int argc, char **argv)
     return 0;
   }
 
+  ret = 1;
   pid = fork();
 
   if (pid == 0)
