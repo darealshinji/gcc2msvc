@@ -497,18 +497,7 @@ int main(int argc, char **argv)
     }
   }
 
-  if (rtti)                  { cmd = " /GR" + cmd;                }
-  if (threadsafe_statics)    { cmd = " /Zc:threadSafeInit" + cmd; }
-  if (default_include_paths) { cmd += " " DEFAULT_INCLUDES;       }
-  if (do_link)
-  {
-    if (!have_outname)     { lnk += " /out:'a.exe'";      }
-    if (default_lib_paths) { lnk += " " DEFAULT_LIBPATHS; }
-    cmd += " /link" + lnk;
-  }
-
   driver = unix_path(driver);
-  cmd = "'" + driver + "'" + cmd;
 
   if (help_cl)
   {
@@ -535,6 +524,18 @@ int main(int argc, char **argv)
       << "libraries: " DEFAULT_LIBPATHS << std::endl;
     return 0;
   }
+
+  if (rtti)                  { cmd = " /GR" + cmd;                }
+  if (threadsafe_statics)    { cmd = " /Zc:threadSafeInit" + cmd; }
+  if (default_include_paths) { cmd += " " DEFAULT_INCLUDES;       }
+  if (do_link)
+  {
+    if (!have_outname)     { lnk += " /out:'a.exe'";      }
+    if (default_lib_paths) { lnk += " " DEFAULT_LIBPATHS; }
+    cmd += " /link" + lnk;
+  }
+
+  cmd = "'" + driver + "'" + cmd;
 
   if (verbose)
   {
