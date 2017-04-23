@@ -50,12 +50,15 @@
   "\n" \
   "Environment variables:\n" \
   "  CL_CMD      path to cl.exe\n" \
+  "  INCLUDE     semicolon (;) separated list of include paths\n" \
+  "  LIB         semicolon (;) separated list of library search paths\n" \
   "\n" \
   "See also https://msdn.microsoft.com/en-us/library/19z1t1wy.aspx\n"
 
 #include <iostream>
 #include <locale>
 #include <string>
+#include <vector>
 
 #include <errno.h>
 #include <libgen.h>
@@ -81,6 +84,25 @@ bool begins(const char *p, const char *str)
     return true;
   }
   return false;
+}
+
+// split string s by delimiter c and save as vector v
+void split(const std::string &s, char c, std::vector<std::string> &v)
+{
+  size_t i = 0;
+  size_t j = s.find(c);
+
+  while (j != std::string::npos)
+  {
+    v.push_back(s.substr(i, j - i));
+    i = ++j;
+    j = s.find(c, j);
+
+    if (j == std::string::npos)
+    {
+      v.push_back(s.substr(i, s.length()));
+    }
+  }
 }
 
 // C: is mounted as "/mnt/c", D: as "/mnt/d", and so on;
@@ -180,10 +202,6 @@ int main(int argc, char **argv)
   // with -fno-rtti -fno-threadsafe-statics, so let's do the same
   bool rtti = true;
   bool threadsafe_statics = true;
-
-  pid_t pid;
-  int status;
-  int ret;
 
   char *driver_env = getenv("CL_CMD");
   if (driver_env != NULL)
@@ -499,6 +517,9 @@ int main(int argc, char **argv)
 
   driver = unix_path(driver);
 
+
+  // print information and exit
+
   if (help_cl)
   {
     // piping to cat helps to display the output correctly and in one go
@@ -525,6 +546,50 @@ int main(int argc, char **argv)
     return 0;
   }
 
+
+  // turn lists obtained from environment variables INCLUDE and
+  // and LIB into command line arguments /I'dir' and /libpath'dir'
+
+  const int envmax = 4096;
+  std::vector<std::string> incenv_vec, libenv_vec;
+
+  char *incenv = getenv("INCLUDE");
+  if (incenv != NULL)
+  {
+    std::string s = STR(incenv) + ";";
+    split(s, ';', incenv_vec);
+    size_t n = incenv_vec.size();
+    for (size_t i = 0; i < n; ++i)
+    {
+      if (!incenv_vec[i].empty())
+      {
+        char c[envmax];
+        snprintf(c, envmax - 1, "%s", incenv_vec[i].c_str());
+        cmd += " /I'" + win_path(c) + "'";
+      }
+    }
+  }
+
+  char *libenv = getenv("LIB");
+  if (libenv != NULL)
+  {
+    std::string s = STR(libenv) + ";";
+    split(s, ';', libenv_vec);
+    size_t n = libenv_vec.size();
+    for (size_t i = 0; i < n; ++i)
+    {
+      if (!libenv_vec[i].empty())
+      {
+        char c[envmax];
+        snprintf(c, envmax - 1, "%s", libenv_vec[i].c_str());
+        lnk += " /libpath'" + win_path(c) + "'";
+      }
+    }
+  }
+
+
+  // create the final command to execute
+
   if (rtti)                  { cmd = " /GR" + cmd;                }
   if (threadsafe_statics)    { cmd = " /Zc:threadSafeInit" + cmd; }
   if (default_include_paths) { cmd += " " DEFAULT_INCLUDES;       }
@@ -546,8 +611,12 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  ret = 1;
-  pid = fork();
+
+  // run the command in a forked shell
+
+  int status;
+  int ret = 1;
+  pid_t pid = fork();
 
   if (pid == 0)
   {
