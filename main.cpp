@@ -57,7 +57,6 @@
 #include <iostream>
 #include <locale>
 #include <string>
-#include <vector>
 
 #include <errno.h>
 #include <libgen.h>
@@ -73,6 +72,8 @@
 
 #define STR(x) std::string(x)
 
+static int maxlen = 4096;
+
 // check if the beginning of p equals str and if p is longer than str
 bool begins(const char *p, const char *str)
 {
@@ -85,33 +86,13 @@ bool begins(const char *p, const char *str)
   return false;
 }
 
-// split string s by delimiter c and save as vector v
-void split(const std::string &s, char c, std::vector<std::string> &v)
-{
-  size_t i = 0;
-  size_t j = s.find(c);
-
-  while (j != std::string::npos)
-  {
-    v.push_back(s.substr(i, j - i));
-    i = ++j;
-    j = s.find(c, j);
-
-    if (j == std::string::npos)
-    {
-      v.push_back(s.substr(i, s.length()));
-    }
-  }
-}
-
 // C: is mounted as "/mnt/c", D: as "/mnt/d", and so on;
 // forward slashes (/) are not converted to backslashes (\)
 // because Windows actually supports them
 std::string win_path(char *ch)
 {
-  std::string str, drive;
-
-  str = std::string(ch);
+  char path[maxlen];
+  std::string str;
 
   if (ch[0] == '/')
   {
@@ -119,21 +100,19 @@ std::string win_path(char *ch)
 
     if (begins(ch, "/mnt/"))
     {
-      drive = str.substr(5,1);
-
-      if (drive.find_first_not_of("cdefghijklmnopqrstuvwxyzab") == std::string::npos)
+      if (strchr("cdefghijklmnopqrstuvwxyzab", ch[5]) != NULL)
       {
-        if (str.length() == 6)
+        if (strlen(ch) == 6)
         {
           // /mnt/d -> d:/
-          str = drive + ":/";
+          snprintf(path, maxlen-1, "%c:/", ch[5]);
           prepend = false;
         }
-        else if (str.substr(6,1) == "/")
+        else if (ch[6] == '/')
         {
           // /mnt/d/ -> d:/
           // /mnt/d/dir -> d:/dir
-          str = drive + ":" + str.substr(6);
+          snprintf(path, maxlen-1, "%c:/%s", ch[5], ch+7);
           prepend = false;
         }
       }
@@ -142,19 +121,17 @@ std::string win_path(char *ch)
     if (prepend)
     {
       // /usr/include -> ./usr/include
-      str = "." + str;
+      snprintf(path, maxlen-1, ".%s", ch);
     }
+
+    str = std::string(path);
+  }
+  else
+  {
+    str = std::string(ch);
   }
 
   return str;
-}
-
-// convert from std::string to char and call win_path()
-std::string win_path_str(std::string str)
-{
-  char c[4096];
-  snprintf(c, 4095, "%s", str.c_str());
-  return win_path(c);
 }
 
 std::string unix_path(std::string str)
@@ -176,6 +153,20 @@ std::string unix_path(std::string str)
   }
 
   return str;
+}
+
+void split_env(const char *env_var, std::string msvc_arg, std::string &str)
+{
+  char *env = getenv(env_var);
+  if (env != NULL)
+  {
+    char *token = strtok(env, ";");
+    while (token != NULL)
+    {
+      str += " /" + msvc_arg + "'" + win_path(token) + "'";
+      token = strtok(NULL, ";");
+    }
+  }
 }
 
 void errmsg(std::string msg)
@@ -593,38 +584,8 @@ int main(int argc, char **argv)
 
   // turn lists obtained from environment variables INCLUDE and
   // and LIB into command line arguments /I'dir' and /libpath'dir'
-
-  std::vector<std::string> incenv_vec, libenv_vec;
-
-  char *incenv = getenv("INCLUDE");
-  if (incenv != NULL)
-  {
-    std::string s = STR(incenv) + ";";
-    split(s, ';', incenv_vec);
-    size_t n = incenv_vec.size();
-    for (size_t i = 0; i < n; ++i)
-    {
-      if (!incenv_vec[i].empty())
-      {
-        cmd += " /I'" + win_path_str(incenv_vec[i]) + "'";
-      }
-    }
-  }
-
-  char *libenv = getenv("LIB");
-  if (libenv != NULL)
-  {
-    std::string s = STR(libenv) + ";";
-    split(s, ';', libenv_vec);
-    size_t n = libenv_vec.size();
-    for (size_t i = 0; i < n; ++i)
-    {
-      if (!libenv_vec[i].empty())
-      {
-        lnk += " /libpath'" + win_path_str(libenv_vec[i]) + "'";
-      }
-    }
-  }
+  split_env("INCLUDE", "I", cmd);
+  split_env("LIB", "libpath", cmd);
 
 
   // create the final command to execute

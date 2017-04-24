@@ -7,42 +7,41 @@ void run_tests()
 {
   std::string result;
 
-#define RUN_TEST(function, input, expect) \
-  result = function(input); \
-  std::cout << input << " => " << expect; \
+#define _T(function, input, expect) \
+  result = function((char *)input); \
   if (result == expect) { \
-    std::cout << " [OK]" << std::endl; \
+    std::cout << " [OK] "; \
   } else { \
-    std::cout << " [FAIL]" << std::endl; \
+    std::cout << " [FAIL] "; \
+  } \
+  std::cout << input << " => " << expect << std::endl; \
+  if (result != expect) { \
     std::cout << "result was: " << result << std::endl; \
   }
 
-# define CH (char *)
   std::cout << "\ntesting win_path():" << std::endl;
-  RUN_TEST(win_path, CH"/usr/include", "./usr/include");
-  RUN_TEST(win_path, CH"/", "./");
-  RUN_TEST(win_path, CH"mnt", "mnt");
-  RUN_TEST(win_path, CH"/mnt", "./mnt");
-  RUN_TEST(win_path, CH"/mnt/", "./mnt/");
-  RUN_TEST(win_path, CH"/mnt/d", "d:/");
-  RUN_TEST(win_path, CH"/mnt/d/", "d:/");
-  RUN_TEST(win_path, CH"/mnt/d/dir", "d:/dir");
-
-  std::cout << "\ntesting win_path_str():" << std::endl;
-  RUN_TEST(win_path_str, "/mnt/d/dir/", "d:/dir/");
-  RUN_TEST(win_path_str, "/mnt/dd", "./mnt/dd");
-  RUN_TEST(win_path_str, "/mnt/dd/", "./mnt/dd/");
-  RUN_TEST(win_path_str, "/mnt/D", "./mnt/D");
-  RUN_TEST(win_path_str, "/mnt/D/", "./mnt/D/");
-  RUN_TEST(win_path_str, "/mnt/./d", "./mnt/./d");
-  RUN_TEST(win_path_str, "/mnt/./d/", "./mnt/./d/");
-  RUN_TEST(win_path_str, "/mnt/../d", "./mnt/../d");
-  RUN_TEST(win_path_str, "/mnt/../d/", "./mnt/../d/");
+  _T(win_path, "/usr/include", "./usr/include");
+  _T(win_path, "/", "./");
+  _T(win_path, "mnt", "mnt");
+  _T(win_path, "/mnt", "./mnt");
+  _T(win_path, "/mnt/", "./mnt/");
+  _T(win_path, "/mnt/d", "d:/");
+  _T(win_path, "/mnt/d/", "d:/");
+  _T(win_path, "/mnt/d/dir", "d:/dir");
+  _T(win_path, "/mnt/d/dir/", "d:/dir/");
+  _T(win_path, "/mnt/dd", "./mnt/dd");
+  _T(win_path, "/mnt/dd/", "./mnt/dd/");
+  _T(win_path, "/mnt/D", "./mnt/D");
+  _T(win_path, "/mnt/D/", "./mnt/D/");
+  _T(win_path, "/mnt/./d", "./mnt/./d");
+  _T(win_path, "/mnt/./d/", "./mnt/./d/");
+  _T(win_path, "/mnt/../d", "./mnt/../d");
+  _T(win_path, "/mnt/../d/", "./mnt/../d/");
 
   std::cout << "\ntesting unix_path():" << std::endl;
-  RUN_TEST(unix_path, CH"c:", "/mnt/c");
-  RUN_TEST(unix_path, CH"c:/", "/mnt/c/");
-  RUN_TEST(unix_path, CH"D:/Program Files (x86)/", "/mnt/d/Program Files (x86)/");
-  RUN_TEST(unix_path, CH"d:/Program Files (x86)/", "/mnt/d/Program Files (x86)/");
+  _T(unix_path, "c:", "/mnt/c");
+  _T(unix_path, "c:/", "/mnt/c/");
+  _T(unix_path, "D:/Program Files (x86)/", "/mnt/d/Program Files (x86)/");
+  _T(unix_path, "d:/Program Files (x86)/", "/mnt/d/Program Files (x86)/");
 }
 
