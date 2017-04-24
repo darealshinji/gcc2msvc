@@ -1,7 +1,9 @@
 #include <iostream>
 #include <string>
 
-#include "gcc2msvc.hpp"
+std::string win_path(char *ch);
+std::string unix_path(char *ch);
+
 
 void run_tests()
 {
@@ -40,8 +42,10 @@ void run_tests()
 
   std::cout << "\ntesting unix_path():" << std::endl;
   _T(unix_path, "c:", "/mnt/c");
-  _T(unix_path, "c:/", "/mnt/c/");
+  _T(unix_path, "C:/", "/mnt/c/");
+  _T(unix_path, "C:\\dir\\subdir\\another\\dir", "/mnt/c/dir/subdir/another/dir");
+  _T(unix_path, "C:\\\\dir\\subdir\\another\\dir\\", "/mnt/c/dir/subdir/another/dir/");
   _T(unix_path, "D:/Program Files (x86)/", "/mnt/d/Program Files (x86)/");
-  _T(unix_path, "d:/Program Files (x86)/", "/mnt/d/Program Files (x86)/");
+  _T(unix_path, "d:/Program Files (x86)", "/mnt/d/Program Files (x86)");
 }
 

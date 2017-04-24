@@ -55,9 +55,9 @@
   "  LIB         semicolon (;) separated list of library search paths\n"
 
 #include <iostream>
-#include <locale>
 #include <string>
 
+#include <ctype.h>
 #include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
@@ -68,11 +68,23 @@
 #include <unistd.h>
 
 #include "config.h"
-#include "gcc2msvc.hpp"
 
 #define STR(x) std::string(x)
 
+#ifdef TEST
+void run_tests(void);
+#endif
+bool begins(const char *p, const char *str);
+std::string win_path(char *ch);
+std::string unix_path(char *ch);
+void replace_with_forward_slahes(const std::string &from, std::string &str);
+void split_env(const char *env_var, std::string msvc_arg, std::string &str);
+void errmsg(std::string msg);
+void warnmsg(std::string msg);
+void print_help(char *self);
+
 static int maxlen = 4096;
+
 
 // check if the beginning of p equals str and if p is longer than str
 bool begins(const char *p, const char *str)
@@ -89,6 +101,7 @@ bool begins(const char *p, const char *str)
 // C: is mounted as "/mnt/c", D: as "/mnt/d", and so on;
 // forward slashes (/) are not converted to backslashes (\)
 // because Windows actually supports them
+
 std::string win_path(char *ch)
 {
   char path[maxlen];
@@ -134,25 +147,56 @@ std::string win_path(char *ch)
   return str;
 }
 
-std::string unix_path(std::string str)
+std::string unix_path(char *ch)
 {
-  std::locale loc;
-  std::string drive;
+  std::string str;
+  char path[maxlen];
+  char drive = '\0';
+  size_t len = strlen(ch);
 
-  std::string s(str.substr(1,2));
-
-  if (s == ":\\" || s == ":/" || s == ":")
+  if (len >= 2 && ch[1] == ':')
   {
-    drive = str.substr(0,1);
-
-    if (drive.find_first_not_of("CDEFGHIJKLMNOPQRSTUVWXYZAB") == std::string::npos)
+    if (len == 2 || (len > 2 && (ch[2] == '\\' || ch[2] == '/')))
     {
-      drive = std::tolower(drive[0], loc);
+      if (strchr("CDEFGHIJKLMNOPQRSTUVWXYZAB", ch[0]) != NULL)
+      {
+        drive = tolower(ch[0]);
+      }
+      else if (strchr("cdefghijklmnopqrstuvwxyzab", ch[0]) != NULL)
+      {
+        drive = ch[0];
+      }
     }
-    str = "/mnt/" + drive + str.substr(2);
   }
 
+  if (drive != '\0')
+  {
+    if (len == 2) {
+      sprintf(path, "/mnt/%c", drive);
+    } else {
+      snprintf(path, maxlen-1, "/mnt\\%c\\%s", drive, ch+3);
+    }
+  }
+  else
+  {
+    sprintf(path, "%s", ch);
+  }
+
+  str = STR(path);
+
+  // convert backslahes (\) to forward slahes (/)
+  replace_with_forward_slahes("\\\\", str);
+  replace_with_forward_slahes("\\", str);
+
   return str;
+}
+
+void replace_with_forward_slahes(const std::string &from, std::string &str)
+{
+  for (size_t i = 0; (i = str.find(from, i)) != std::string::npos; ++i)
+  {
+    str.replace(i, from.size(), "/");
+  }
 }
 
 void split_env(const char *env_var, std::string msvc_arg, std::string &str)
@@ -218,7 +262,7 @@ int main(int argc, char **argv)
   char *driver_env = getenv("CL_CMD");
   if (driver_env != NULL)
   {
-    driver = STR(driver_env);
+    driver = unix_path(driver_env);
   }
 
 
@@ -234,7 +278,7 @@ int main(int argc, char **argv)
     {
       if (arg[1] == '-')
       {
-        if      (begins(arg, "--cl="))   { driver = STR(arg+5);
+        if      (begins(arg, "--cl="))   { driver = unix_path(arg+5);
                                            use_default_driver = false;    }
         else if (str == "--verbose")     { verbose = true;                }
         else if (str == "--print-only")  { verbose = print_only = true;   }
@@ -542,7 +586,6 @@ int main(int argc, char **argv)
   {
     driver = driver_default;
   }
-  driver = unix_path(driver);
 
 
   // print information and exit
