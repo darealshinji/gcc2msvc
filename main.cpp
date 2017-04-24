@@ -1,4 +1,5 @@
-/* The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
  * Copyright (C) 2017, djcj <djcj@gmx.de>
  *
@@ -77,7 +78,7 @@ void run_tests(void);
 bool begins(const char *p, const char *str);
 std::string win_path(char *ch);
 std::string unix_path(char *ch);
-void replace_with_forward_slahes(const std::string &from, std::string &str);
+void replace_with_forward_slashes(const std::string &from, std::string &str);
 void split_env(const char *env_var, std::string msvc_arg, std::string &str);
 void errmsg(std::string msg);
 void warnmsg(std::string msg);
@@ -86,7 +87,7 @@ void print_help(char *self);
 static int maxlen = 4096;
 
 
-// check if the beginning of p equals str and if p is longer than str
+/* check if the beginning of p equals str and if p is longer than str */
 bool begins(const char *p, const char *str)
 {
   size_t n = strlen(str);
@@ -98,9 +99,9 @@ bool begins(const char *p, const char *str)
   return false;
 }
 
-// C: is mounted as "/mnt/c", D: as "/mnt/d", and so on;
-// forward slashes (/) are not converted to backslashes (\)
-// because Windows actually supports them
+/* C: is mounted as "/mnt/c", D: as "/mnt/d", and so on;
+ * forward slashes (/) are not converted to backslashes (\)
+ * because Windows actually supports them */
 
 std::string win_path(char *ch)
 {
@@ -117,14 +118,14 @@ std::string win_path(char *ch)
       {
         if (strlen(ch) == 6)
         {
-          // /mnt/d -> d:/
+          /* /mnt/d -> d:/ */
           snprintf(path, maxlen-1, "%c:/", ch[5]);
           prepend = false;
         }
         else if (ch[6] == '/')
         {
-          // /mnt/d/ -> d:/
-          // /mnt/d/dir -> d:/dir
+          /* /mnt/d/ -> d:/
+           * /mnt/d/dir -> d:/dir */
           snprintf(path, maxlen-1, "%c:/%s", ch[5], ch+7);
           prepend = false;
         }
@@ -133,7 +134,7 @@ std::string win_path(char *ch)
 
     if (prepend)
     {
-      // /usr/include -> ./usr/include
+      /* /usr/include -> ./usr/include */
       snprintf(path, maxlen-1, ".%s", ch);
     }
 
@@ -154,6 +155,7 @@ std::string unix_path(char *ch)
   char drive = '\0';
   size_t len = strlen(ch);
 
+  /* check for drive letter */
   if (len >= 2 && ch[1] == ':')
   {
     if (len == 2 || (len > 2 && (ch[2] == '\\' || ch[2] == '/')))
@@ -174,7 +176,8 @@ std::string unix_path(char *ch)
     if (len == 2) {
       sprintf(path, "/mnt/%c", drive);
     } else {
-      snprintf(path, maxlen-1, "/mnt\\%c\\%s", drive, ch+3);
+      /* don't use "/mnt/%c/%s" to prevent double slashes */
+      snprintf(path, maxlen-1, "/mnt/%c\\%s", drive, ch+3);
     }
   }
   else
@@ -184,14 +187,14 @@ std::string unix_path(char *ch)
 
   str = STR(path);
 
-  // convert backslahes (\) to forward slahes (/)
-  replace_with_forward_slahes("\\\\", str);
-  replace_with_forward_slahes("\\", str);
+  /* convert backslashes (\) to forward slashes (/) */
+  replace_with_forward_slashes("\\\\", str);
+  replace_with_forward_slashes("\\", str);
 
   return str;
 }
 
-void replace_with_forward_slahes(const std::string &from, std::string &str)
+void replace_with_forward_slashes(const std::string &from, std::string &str)
 {
   for (size_t i = 0; (i = str.find(from, i)) != std::string::npos; ++i)
   {
@@ -254,8 +257,8 @@ int main(int argc, char **argv)
   bool use_default_inc_paths = true;
   bool default_lib_paths = true;
 
-  // gcc has enabled these by default unless explicitly disabled
-  // with -fno-rtti -fno-threadsafe-statics, so let's do the same
+  /* gcc has enabled these by default unless explicitly disabled
+   * with -fno-rtti -fno-threadsafe-statics, so let's do the same */
   bool rtti = true;
   bool threadsafe_statics = true;
 
@@ -266,7 +269,7 @@ int main(int argc, char **argv)
   }
 
 
-  // parse args
+  /* parse arguments */
 
   for (int i = 1; i < argc; ++i)
   {
@@ -298,7 +301,7 @@ int main(int argc, char **argv)
           return 0;
         }
 
-        // -c -C -w
+        /*  -c -C -w  */
         else if (str == "-c" || str == "-C" || str == "-w")
         {
           cmd += " /" + std::string(arg+1);
@@ -307,13 +310,13 @@ int main(int argc, char **argv)
           }
         }
 
-        // -g
+        /*  -g  */
         else if (str == "-g")
         {
           cmd += " /Zi";
         }
 
-        // -x c  -x c++
+        /*  -x c  -x c++  */
         else if (arg[1] == 'x')
         {
           if (len == 2) {
@@ -327,7 +330,7 @@ int main(int argc, char **argv)
           else if (str == "-xc++") { cmd += " /TP"; }
         }
 
-        // -o file
+        /*  -o file  */
         else if (arg[1] == 'o')
         {
           if (len == 2) {
@@ -341,7 +344,7 @@ int main(int argc, char **argv)
           have_outname = true;
         }
 
-        // -I path
+        /*  -I path  */
         else if (arg[1] == 'I')
         {
           if (len == 2) {
@@ -354,7 +357,7 @@ int main(int argc, char **argv)
           }
         }
 
-        // -DDEFINE[=ARG]  -UDEFINE
+        /*  -DDEFINE[=ARG]  -UDEFINE  */
         else if (arg[1] == 'D' || arg[1] == 'U')
         {
           if (len == 2) {
@@ -367,7 +370,7 @@ int main(int argc, char **argv)
           }
         }
 
-        // -L path
+        /*  -L path  */
         else if (arg[1] == 'L')
         {
           if (len == 2) {
@@ -380,7 +383,7 @@ int main(int argc, char **argv)
           }
         }
 
-        // -llibname
+        /*  -llibname  */
         else if (arg[1] == 'l' && len > 2)
         {
           if      (str == "-lmsvcrt")   { cmd += " /MD"; }
@@ -392,7 +395,7 @@ int main(int argc, char **argv)
                    str != "-lgcc_s")    { lnk += " '" + STR(arg+2) + ".lib'"; }
         }
 
-        // -O0 -O1 -O2 -O3 -Os
+        /*  -O0 -O1 -O2 -O3 -Os  */
         else if (arg[1] == 'O' && len == 3)
         {
           if      (arg[2] == '1' ||
@@ -402,11 +405,11 @@ int main(int argc, char **argv)
           else if (arg[2] == '0')   { cmd += " /Od";     }
         }
 
-        // -Wl,--whole-archive
-        // -Wl,--out-implib,libname
-        // -Wl,-output-def,defname
-        // -Wall -Wextra -Werror
-        // -Wcl,arg -Wlink,arg
+        /*  -Wl,--whole-archive
+         *  -Wl,--out-implib,libname
+         *  -Wl,-output-def,defname
+         *  -Wall  -Wextra  -Werror
+         *  -Wcl,arg  -Wlink,arg  */
         else if (arg[1] == 'W' && len > 2)
         {
           if (arg[2] == 'l')
@@ -480,7 +483,7 @@ int main(int argc, char **argv)
           else if (str == "-Werror") { cmd += " /WX";   }
         }
 
-        // -mdll -msse -msse2 -mavx -mavx2
+        /*  -mdll  -msse -msse2  -mavx -mavx2  */
         else if (arg[1] == 'm' && len > 2)
         {
           if      (str == "-m32")   { bits = 32;            }
@@ -492,10 +495,10 @@ int main(int argc, char **argv)
           else if (str == "-mavx2") { cmd += " /arch:AVX2"; }
         }
 
-        // -fno-rtti -fno-threadsafe-statics -fno-inline -fomit-frame-pointer
-        // -fpermissive -finline-functions -fopenmp -fstack-protector -fstack-check
-        // -funsigned-char -fsized-deallocation -fconstexpr-depth=num
-        // -ffp-contract=fast|off -fwhole-program
+        /*  -fno-rtti -fno-threadsafe-statics -fno-inline -fomit-frame-pointer
+         *  -fpermissive -finline-functions -fopenmp -fstack-protector -fstack-check
+         *  -funsigned-char -fsized-deallocation -fconstexpr-depth=num
+         *  -ffp-contract=fast|off -fwhole-program  */
         else if (arg[1] == 'f' && len > 2)
         {
           if (begins(arg, "-fno-"))
@@ -524,7 +527,7 @@ int main(int argc, char **argv)
           }
         }
 
-        // -nostdinc -nostdinc++ -nostdlib -nodefaultlibs
+        /*  -nostdinc  -nostdinc++  -nostdlib  -nodefaultlibs  */
         else if (arg[1] == 'n' && len > 8)
         {
           if      (str == "-nostdinc" ||
@@ -534,7 +537,7 @@ int main(int argc, char **argv)
                                               default_lib_paths = false;     }
         }
 
-        // -shared -std=c<..>|gnu<..>
+        /*  -shared  -std=c<..>|gnu<..>  */
         else if (arg[1] == 's' && len > 5)
         {
           if      (str == "-shared")       { cmd += " /LD"; }
@@ -545,7 +548,7 @@ int main(int argc, char **argv)
           }
         }
 
-        // -include file
+        /*  -include file  */
         else if (str == "-include")
         {
           ++i;
@@ -554,13 +557,13 @@ int main(int argc, char **argv)
           }
         }
 
-        // -trigraphs
+        /*  -trigraphs  */
         else if (str == "-trigraphs")
         {
           cmd += " /Zc:trigraphs";
         }
 
-        // -print-search-dirs
+        /*  -print-search-dirs  */
         else if (str == "-print-search-dirs")
         {
           print_search_dirs = true;
@@ -588,11 +591,12 @@ int main(int argc, char **argv)
   }
 
 
-  // print information and exit
+  /* print information and exit */
 
   if (print_help_cl)
   {
-    // piping to cat helps to display the output correctly and in one go
+    /* piping to cat helps to display the
+     * output correctly and in one go */
     cmd = "'" + driver + "' /help 2>&1 | cat";
     return system(cmd.c_str());
   }
@@ -625,13 +629,13 @@ int main(int argc, char **argv)
   }
 
 
-  // turn lists obtained from environment variables INCLUDE and
-  // and LIB into command line arguments /I'dir' and /libpath'dir'
+  /* turn lists obtained from environment variables INCLUDE and
+   * and LIB into command line arguments /I'dir' and /libpath'dir' */
   split_env("INCLUDE", "I", cmd);
   split_env("LIB", "libpath", cmd);
 
 
-  // create the final command to execute
+  /* create the final command to execute */
 
   if (rtti)                  { cmd = " /GR" + cmd;                }
   if (threadsafe_statics)    { cmd = " /Zc:threadSafeInit" + cmd; }
@@ -655,7 +659,7 @@ int main(int argc, char **argv)
   }
 
 
-  // run the command in a forked shell
+  /* run the command in a forked shell */
 
   int status;
   int ret = 1;
@@ -664,7 +668,7 @@ int main(int argc, char **argv)
   if (pid == 0)
   {
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
-    _exit(127);  // if execl() was successful, this won't be reached
+    _exit(127);  /* if execl() was successful, this won't be reached */
   }
 
   if (pid > 0)
