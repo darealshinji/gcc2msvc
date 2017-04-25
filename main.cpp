@@ -597,7 +597,7 @@ int main(int argc, char **argv)
   {
     /* piping to cat helps to display the
      * output correctly and in one go */
-    cmd = "'" + driver + "' /help 2>&1 | cat";
+    cmd = "'" + driver + "' 2>&1 | cat";
     return system(cmd.c_str());
   }
   else if (print_help_link)
@@ -609,12 +609,12 @@ int main(int argc, char **argv)
   {
     if (use_default_driver)
     {
-      cmd = "'" DEFAULT_CL_CMD_X64 "' /help 2>&1 | head -n3 ; "
-            "'" DEFAULT_CL_CMD_X86 "' /help 2>&1 | head -n3 ; ";
+      cmd = "'" DEFAULT_CL_CMD_X64 "' 2>&1 | head -n3 ; "
+            "'" DEFAULT_CL_CMD_X86 "' 2>&1 | head -n3 ; ";
     }
     else
     {
-      cmd = "'" + driver + "' /help 2>&1 | head -n3 ; ";
+      cmd = "'" + driver + "' 2>&1 | head -n3 ; ";
     }
     cmd += "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe' 2>&1 | head -n3";
     return system(cmd.c_str());
