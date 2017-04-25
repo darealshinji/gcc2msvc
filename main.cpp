@@ -597,7 +597,7 @@ int main(int argc, char **argv)
   {
     /* piping to cat helps to display the
      * output correctly and in one go */
-    cmd = "'" + driver + "' 2>&1 | cat";
+    cmd = "'" + driver + "' /help 2>&1 | cat";
     return system(cmd.c_str());
   }
   else if (print_help_link)
