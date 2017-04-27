@@ -1,0 +1,70 @@
+# cl
+-c            /c
+-C            /C
+-w            /w
+-g            /Zi
+-x[ ]c        /TC
+-x[ ]c++      /TP
+-D[ ]%s       /D%s
+-U[ ]%s       /U%s
+-O1           /O2 /Ot
+-O2           /O2 /Ot
+-O3           /Ox
+-Os           /O1 /Os
+-O0           /Od
+-Wall         /W3
+-Wextra       /Wall
+-Werror       /Wx
+-Wcl,%s       /%s
+-Wcl,/%s      /%s
+-Wcl,-%s      /%s
+-mdll         /LD
+-msse         /arch:SSE
+-msse2        /arch:SSE2
+-mavx         /arch:AVX
+-mavx2        /arch:AVX2
+-frtti                    /GR
+-fno-rtti                 /GR-
+-fthreadsafe-statics      /Zc:threadSafeInit
+-fno-threadsafe-statics   /Zc:threadSafeInit-
+-fno-inline               /Ob0
+-finline-functions        /Ob2
+-fomit-frame-pointer      /Oy
+-fno-omit-frame-pointer   /Oy-
+-fpermissive              /permissive
+-fopenmp                  /openmp
+-fstack-protector         /GS
+-fno-stack-protector      /GS- /guard:cf-
+-fstack-protector-strong  /GS /guard:cf
+-fstack-protector-all     /GS /guard:cf
+-fstack-check             /GS
+-fno-stack-check          /GS- /guard:cf-
+-funsigned-char           /J
+-fsized-deallocation      /Zc:sizedDealloc
+-fno-sized-deallocation   /Zc:sizedDealloc-
+-fconstexpr-depth=%d      /constexpr:depth%d
+-ffp-contract=fast        /fp:fast
+-ffp-contract=off         /fp:strict
+-fwhole-program           /GL
+-fno-whole-program        /GL-
+
+# link
+-o[ ]%s       /out:'%s'
+-L[ ]%s       /libpath:'%s'
+-lmsvcrt      /MD
+-llibcmt      /MT
+-lc           ""
+-lm           ""
+-lrt          ""
+-lstdc++      ""
+-lgcc_s       ""
+-l%s          '%s.lib'
+-Wlink,%s     /%s
+-Wlink,/%s    /%s
+-Wlink,-%s    /%s
+-Wl,--whole-archive       /wholearchive
+-Wl,--out-implib,%s       /implib:'%s'
+-Wl,--out-implib -Wl,%s   /implib:'%s'
+-Wl,-output-def,%s        /def'%s'
+-Wl,-output-def -Wl,%s    /def'%s'
+

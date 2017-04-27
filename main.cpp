@@ -31,7 +31,7 @@
   "\n" \
   "Supported GCC options (see `man gcc' for more information):\n" \
   "  -c -C -DDEFINE[=ARG] -fconstexpr-depth=num -ffp-contract=fast|off\n" \
-  "  -finline-functions -fno-inline -fno-rtti -fno-threadsafe-statics\n" \
+  "  -finline-functions -fno-inline -frtti -fthreadsafe-statics\n" \
   "  -fomit-frame-pointer -fopenmp -fpermissive -fsized-deallocation -fstack-check\n" \
   "  -fstack-protector -funsigned-char -fwhole-program -g -include file -I path\n" \
   "  -llibname -L path -m32 -mavx -mavx2 -mdll -msse -msse2 -nodefaultlibs -nostdinc\n" \
@@ -257,11 +257,6 @@ int main(int argc, char **argv)
   bool use_default_inc_paths = true;
   bool default_lib_paths = true;
 
-  /* gcc has enabled these by default unless explicitly disabled
-   * with -fno-rtti -fno-threadsafe-statics, so let's do the same */
-  bool rtti = true;
-  bool threadsafe_statics = true;
-
   char *driver_env = getenv("CL_CMD");
   if (driver_env != NULL)
   {
@@ -288,10 +283,10 @@ int main(int argc, char **argv)
         else if (str == "--help")        { print_help(argv[0]); return 0; }
         else if (begins(arg, "--help-"))
         {
-          if      (str == "--help-cl")   { print_help_cl = true;       }
-          else if (str == "--help-link") { print_help_link = true;     }
+          if      (str == "--help-cl")   { print_help_cl = true;   }
+          else if (str == "--help-link") { print_help_link = true; }
         }
-        else if (str == "--version")     { print_version = true; }
+        else if (str == "--version")     { print_version = true;   }
       }
       else
       {
@@ -389,8 +384,8 @@ int main(int argc, char **argv)
           if      (str == "-lmsvcrt")   { cmd += " /MD"; }
           else if (str == "-llibcmt")   { cmd += " /MT"; }
           else if (str != "-lc"      &&
-                   str != "-lm"      &&
-                   str != "-lrt"     &&
+                   str != "-lm"      && /* always ignore   */
+                   str != "-lrt"     && /* these libraries */
                    str != "-lstdc++" &&
                    str != "-lgcc_s")    { lnk += " '" + STR(arg+2) + ".lib'"; }
         }
@@ -453,29 +448,65 @@ int main(int argc, char **argv)
               }
             }
 
-            else if (str == "-Wlink")
+            else if (str == "-Wlink" || begins(arg, "-Wlink,"))
             {
-              ++i;
-              if (i < argc) {
-                lnk += " " + STR(argv[i]);
+              std::string s;
+              if (str == "-Wlink" && i+1 < argc)
+              {
+                ++i;
+                s = STR(argv[i]);
               }
-            }
-            else if (begins(argv[i], "-Wlink,"))
-            {
-              lnk += " " + STR(arg+7);
+              else
+              {
+                s = STR(arg+7);
+              }
+
+              if (!s.empty())
+              {
+                if (s[0] == '-')
+                {
+                  lnk += " /" + s.substr(1);
+                }
+                else if (s[0] != '/')
+                {
+                  lnk += " /" + s;
+                }
+                else
+                {
+                  lnk += " " + s;
+                }
+              }
             }
           }
 
-          else if (str == "-Wcl")
+          else if (str == "-Wcl" || begins(arg, "-Wcl,"))
           {
-            ++i;
-            if (i < argc) {
-              cmd += " " + STR(argv[i]);
+            std::string s;
+            if (str == "-Wcl" && i+1 < argc)
+            {
+              ++i;
+              s = STR(argv[i]);
             }
-          }
-          else if (begins(argv[i], "-Wcl,"))
-          {
-            cmd += " " + STR(arg+5);
+            else
+            {
+              s = STR(arg+5);
+            }
+
+            if (!s.empty())
+            {
+              if (s[0] == '-')
+              {
+                cmd += " /" + s.substr(1);
+              }
+              else if (s[0] != '/')
+              {
+                cmd += " /" + s;
+              }
+              else
+              {
+                cmd += " " + s;
+              }
+            }
           }
 
           else if (str == "-Wall")   { cmd += " /W3";   }
@@ -495,35 +526,44 @@ int main(int argc, char **argv)
           else if (str == "-mavx2") { cmd += " /arch:AVX2"; }
         }
 
-        /*  -fno-rtti -fno-threadsafe-statics -fno-inline -fomit-frame-pointer
+        /*  -frtti -fthreadsafe-statics -fno-inline -fomit-frame-pointer
          *  -fpermissive -finline-functions -fopenmp -fstack-protector -fstack-check
+         *  -fstack-protector-strong -fstack-protector-all
          *  -funsigned-char -fsized-deallocation -fconstexpr-depth=num
          *  -ffp-contract=fast|off -fwhole-program  */
         else if (arg[1] == 'f' && len > 2)
         {
           if (begins(arg, "-fno-"))
           {
-            if      (str == "-fno-rtti")                { rtti = false;          }
-            else if (str == "-fno-threadsafe-statics")  { threadsafe_statics = false; }
-            else if (str == "-fno-inline")              { cmd += " /Ob0";        }
+            if      (str == "-fno-rtti")                { cmd += " /GR-";                }
+            else if (str == "-fno-threadsafe-statics")  { cmd += " /Zc:threadSafeInit-"; }
+            else if (str == "-fno-inline")              { cmd += " /Ob0";                }
+            else if (str == "-fno-stack-protector" ||
+                     str == "-fno-stack-check")         { cmd += " /GS- /guard:cf-";     }
+            else if (str == "-fno-sized-deallocation")  { cmd += " /Zc:sizedDealloc-";   }
+            else if (str == "-fno-whole-program")       { cmd += " /GL-";                }
           }
           else
           {
-            if      (str == "-fomit-frame-pointer")     { cmd += " /Oy";         }
-            else if (str == "-fpermissive")             { cmd += " /permissive"; }
-            else if (str == "-finline-functions")       { cmd += " /Ob2";        }
-            else if (str == "-fopenmp")                 { cmd += " /openmp";     }
+            if      (str == "-fomit-frame-pointer")     { cmd += " /Oy";                 }
+            else if (str == "-fpermissive")             { cmd += " /permissive";         }
             else if (str == "-fstack-protector" ||
-                     str == "-fstack-check")            { cmd += " /GS";         }
-            else if (str == "-funsigned-char")          { cmd += " /J";          }
-            else if (str == "-fsized-deallocation")     { cmd += " /Zc:sizedDealloc"; }
+                     str == "-fstack-check")            { cmd += " /GS";                 }
+            else if (str == "-fstack-protector-strong" ||
+                     str == "-fstack-protector-all")    { cmd += " /GS /guard:cf";       }
+            else if (str == "-finline-functions")       { cmd += " /Ob2";                }
+            else if (str == "-frtti")                   { cmd += " /GR";                 }
+            else if (str == "-fthreadsafe-statics")     { cmd += " /Zc:threadSafeInit";  }
+            else if (str == "-fopenmp")                 { cmd += " /openmp";             }
+            else if (str == "-funsigned-char")          { cmd += " /J";                  }
+            else if (str == "-fsized-deallocation")     { cmd += " /Zc:sizedDealloc";    }
             else if (begins(arg, "-fconstexpr-depth=")) { cmd += " /constexpr:depth" + STR(arg+18); }
             else if (begins(arg, "-ffp-contract="))
             {
-              if      (STR(arg+14) == "fast")           { cmd += " /fp:fast";    }
-              else if (STR(arg+14) == "off")            { cmd += " /fp:strict";  }
+              if      (STR(arg+14) == "fast")           { cmd += " /fp:fast";            }
+              else if (STR(arg+14) == "off")            { cmd += " /fp:strict";          }
             }
-            else if (str == "-fwhole-program")          { cmd += " /GL";         }
+            else if (str == "-fwhole-program")          { cmd += " /GL";                 }
           }
         }
 
@@ -637,13 +677,11 @@ int main(int argc, char **argv)
 
   /* create the final command to execute */
 
-  if (rtti)                  { cmd = " /GR" + cmd;                }
-  if (threadsafe_statics)    { cmd = " /Zc:threadSafeInit" + cmd; }
-  if (use_default_inc_paths) { cmd += " " + includes_default;     }
+  if (use_default_inc_paths) { cmd += " " + includes_default;  }
   if (do_link)
   {
-    if (!have_outname)     { lnk += " /out:'a.exe'";      }
-    if (default_lib_paths) { lnk += " " + lib_paths_default; }
+    if (!have_outname)       { lnk += " /out:'a.exe'";         }
+    if (default_lib_paths)   { lnk += " " + lib_paths_default; }
     cmd += " /link" + lnk;
   }
 
