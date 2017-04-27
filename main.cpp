@@ -84,8 +84,6 @@ void errmsg(std::string msg);
 void warnmsg(std::string msg);
 void print_help(char *self);
 
-static int maxlen = 4096;
-
 
 /* check if the beginning of p equals str and if p is longer than str */
 bool begins(const char *p, const char *str)
@@ -105,7 +103,6 @@ bool begins(const char *p, const char *str)
 
 std::string win_path(char *ch)
 {
-  char path[maxlen];
   std::string str;
 
   if (ch[0] == '/')
@@ -116,18 +113,21 @@ std::string win_path(char *ch)
     {
       if (strchr("cdefghijklmnopqrstuvwxyzab", ch[5]) != NULL)
       {
+        char tmp[8];
         if (strlen(ch) == 6)
         {
           /* /mnt/d -> d:/ */
-          snprintf(path, maxlen-1, "%c:/", ch[5]);
           prepend = false;
+          sprintf(tmp, "%c:/", ch[5]);
+          str = STR(tmp);
         }
         else if (ch[6] == '/')
         {
           /* /mnt/d/ -> d:/
            * /mnt/d/dir -> d:/dir */
-          snprintf(path, maxlen-1, "%c:/%s", ch[5], ch+7);
           prepend = false;
+          sprintf(tmp, "%c:/", ch[5]);
+          str = STR(tmp) + STR(ch+7);
         }
       }
     }
@@ -135,14 +135,12 @@ std::string win_path(char *ch)
     if (prepend)
     {
       /* /usr/include -> ./usr/include */
-      snprintf(path, maxlen-1, ".%s", ch);
+      str = "." + STR(ch);
     }
-
-    str = std::string(path);
   }
   else
   {
-    str = std::string(ch);
+    str = STR(ch);
   }
 
   return str;
@@ -151,7 +149,6 @@ std::string win_path(char *ch)
 std::string unix_path(char *ch)
 {
   std::string str;
-  char path[maxlen];
   char drive = '\0';
   size_t len = strlen(ch);
 
@@ -173,19 +170,23 @@ std::string unix_path(char *ch)
 
   if (drive != '\0')
   {
-    if (len == 2) {
-      sprintf(path, "/mnt/%c", drive);
-    } else {
-      /* don't use "/mnt/%c/%s" to prevent double slashes */
-      snprintf(path, maxlen-1, "/mnt/%c\\%s", drive, ch+3);
+    char tmp[8];
+    if (len == 2)
+    {
+      sprintf(tmp, "/mnt/%c", drive);
+      str = STR(tmp);
+    }
+    else
+    {
+      /* don't use "/mnt/%c/" to prevent double slashes */
+      sprintf(tmp, "/mnt/%c\\", drive);
+      str = STR(tmp) + STR(ch+3);
     }
   }
   else
   {
-    sprintf(path, "%s", ch);
+    str = STR(ch);
   }
-
-  str = STR(path);
 
   /* convert backslashes (\) to forward slashes (/) */
   replace_with_forward_slashes("\\\\", str);
