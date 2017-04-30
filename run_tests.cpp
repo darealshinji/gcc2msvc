@@ -27,10 +27,10 @@ void run_tests()
   _T(win_path, "mnt", "mnt");
   _T(win_path, "/mnt", "./mnt");
   _T(win_path, "/mnt/", "./mnt/");
-  _T(win_path, "/mnt/d", "d:/");
-  _T(win_path, "/mnt/d/", "d:/");
-  _T(win_path, "/mnt/d/dir", "d:/dir");
-  _T(win_path, "/mnt/d/dir/", "d:/dir/");
+  _T(win_path, "/mnt/d", "D:/");
+  _T(win_path, "/mnt/d/", "D:/");
+  _T(win_path, "/mnt/d/dir", "D:/dir");
+  _T(win_path, "/mnt/d/dir/", "D:/dir/");
   _T(win_path, "/mnt/dd", "./mnt/dd");
   _T(win_path, "/mnt/dd/", "./mnt/dd/");
   _T(win_path, "/mnt/D", "./mnt/D");

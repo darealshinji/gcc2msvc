@@ -116,17 +116,17 @@ std::string win_path(char *ch)
         char tmp[8];
         if (strlen(ch) == 6)
         {
-          /* /mnt/d -> d:/ */
+          /* /mnt/d -> D:/ */
           prepend = false;
-          sprintf(tmp, "%c:/", ch[5]);
+          sprintf(tmp, "%c:/", toupper(ch[5]));
           str = STR(tmp);
         }
         else if (ch[6] == '/')
         {
-          /* /mnt/d/ -> d:/
-           * /mnt/d/dir -> d:/dir */
+          /* /mnt/d/ -> D:/
+           * /mnt/d/dir -> D:/dir */
           prepend = false;
-          sprintf(tmp, "%c:/", ch[5]);
+          sprintf(tmp, "%c:/", toupper(ch[5]));
           str = STR(tmp) + STR(ch+7);
         }
       }
