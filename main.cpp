@@ -257,6 +257,7 @@ int main(int argc, char **argv)
   bool use_default_driver = true;
   bool use_default_inc_paths = true;
   bool default_lib_paths = true;
+  bool dll = false;
 
   char *driver_env = getenv("CL_CMD");
   if (driver_env != NULL)
@@ -518,13 +519,13 @@ int main(int argc, char **argv)
         /*  -mdll  -msse -msse2  -mavx -mavx2  */
         else if (arg[1] == 'm' && len > 2)
         {
-          if      (str == "-m32")   { bits = 32;            }
-        //else if (str == "-m64")   { bits = 64;            }
-          else if (str == "-mdll")  { cmd += " /LD";        }
-          else if (str == "-msse")  { cmd += " /arch:SSE";  }
-          else if (str == "-msse2") { cmd += " /arch:SSE2"; }
-          else if (str == "-mavx")  { cmd += " /arch:AVX";  }
-          else if (str == "-mavx2") { cmd += " /arch:AVX2"; }
+          if      (str == "-m32")   { bits = 32;                 }
+        //else if (str == "-m64")   { bits = 64;                 }
+          else if (str == "-mdll")  { cmd += " /LD"; dll = true; }
+          else if (str == "-msse")  { cmd += " /arch:SSE";       }
+          else if (str == "-msse2") { cmd += " /arch:SSE2";      }
+          else if (str == "-mavx")  { cmd += " /arch:AVX";       }
+          else if (str == "-mavx2") { cmd += " /arch:AVX2";      }
         }
 
         /*  -frtti -fthreadsafe-statics -fno-inline -fomit-frame-pointer
@@ -581,7 +582,7 @@ int main(int argc, char **argv)
         /*  -shared  -std=c<..>|gnu<..>  */
         else if (arg[1] == 's' && len > 5)
         {
-          if      (str == "-shared")       { cmd += " /LD"; }
+          if      (str == "-shared")       { cmd += " /LD"; dll = true;     }
           else if (begins(arg, "-std="))
           {
             if   (begins(arg, "-std=gnu")) { cmd += " /std:c" + STR(arg+8); }
@@ -681,8 +682,12 @@ int main(int argc, char **argv)
   if (use_default_inc_paths) { cmd += " " + includes_default;  }
   if (do_link)
   {
-    if (!have_outname)       { lnk += " /out:'a.exe'";         }
-    if (default_lib_paths)   { lnk += " " + lib_paths_default; }
+    if (!have_outname)
+    {
+      if (dll) { lnk += " /out:'a.dll'"; }
+      else     { lnk += " /out:'a.exe'"; }
+    }
+    if (default_lib_paths) { lnk += " " + lib_paths_default; }
     cmd += " /link" + lnk;
   }
 
