@@ -10,3 +10,6 @@
 /* Visual Studio 2015 Build Tools installed with Visual Studio 2017 Community */
 //#include "config/vs2015_BuildTools_from_vs2017_Community.h"
 
+/* Visual Studio 2008 (Pro) */
+//#include "config/vs2008_Pro.h"
+
