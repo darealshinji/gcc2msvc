@@ -383,13 +383,20 @@ int main(int argc, char **argv)
         /*  -llibname  */
         else if (arg[1] == 'l' && len > 2)
         {
-          if      (str == "-lmsvcrt")   { cmd += " /MD"; }
-          else if (str == "-llibcmt")   { cmd += " /MT"; }
-          else if (str != "-lc"      &&
-                   str != "-lm"      && /* always ignore   */
-                   str != "-lrt"     && /* these libraries */
-                   str != "-lstdc++" &&
-                   str != "-lgcc_s")    { lnk += " '" + STR(arg+2) + ".lib'"; }
+          if      (str == "-lmsvcrt")      { cmd += " /MD"; }
+          else if (str == "-lcmt" ||
+                   str == "-llibcmt")      { cmd += " /MT"; } /* however libcmt is not part of mingw-w64 */
+          else if (str != "-lc"         &&
+                   str != "-lm"         &&
+                   str != "-lrt"        && /* always ignore these libraries */
+                   str != "-lstdc++"    &&
+                   str != "-lgcc_s"     &&
+                   str != "-lmingw32"   && /* TODO: maybe add an option   */
+                   str != "-lmingwex"   && /* to disable the blacklisting */
+                   str != "-lmingwthrd" &&
+                   str != "-lmoldname"  &&
+                   str != "-lpthread"   &&
+                   str != "-lwinpthread")  { lnk += " '" + STR(arg+2) + ".lib'"; }
         }
 
         /*  -O0 -O1 -O2 -O3 -Os  */
@@ -520,7 +527,7 @@ int main(int argc, char **argv)
         else if (arg[1] == 'm' && len > 2)
         {
           if      (str == "-m32")   { bits = 32;                 }
-        //else if (str == "-m64")   { bits = 64;                 }
+          else if (str == "-m64")   { bits = 64;                 }
           else if (str == "-mdll")  { cmd += " /LD"; dll = true; }
           else if (str == "-msse")  { cmd += " /arch:SSE";       }
           else if (str == "-msse2") { cmd += " /arch:SSE2";      }
