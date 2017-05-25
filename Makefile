@@ -1,8 +1,11 @@
-BIN = gcc2msvc
+BIN  = gcc2msvc
+OBJS = main.o system_return.o
 
 CXXFLAGS := -Wall -Wextra -O3
-LDFLAGS := -s
-CLEANFILES = $(BIN) $(BIN)_test tmp_test.* *.obj *.ilk *.pdb *.exe
+CFLAGS   := -Wall -Wextra -O3
+LDFLAGS  := -s
+
+CLEANFILES = $(BIN) $(OBJS) $(BIN)_test tmp_test.* *.obj *.ilk *.pdb *.exe
 DISTCLEANFILES = config.h
 
 
@@ -14,8 +17,8 @@ clean:
 distclean: clean
 	-rm -f $(DISTCLEANFILES)
 
-$(BIN): main.cpp
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+$(BIN): $(OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $^
 
 main.cpp: config.h
 config.h: config_default.h

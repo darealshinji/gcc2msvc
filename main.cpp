@@ -80,9 +80,10 @@ std::string win_path(char *ch);
 std::string unix_path(char *ch);
 void replace_with_forward_slashes(const std::string &from, std::string &str);
 void split_env(const char *env_var, std::string msvc_arg, std::string &str);
-void errmsg(std::string msg);
-void warnmsg(std::string msg);
 void print_help(char *self);
+extern "C" {
+int system_return(const char *command);
+}
 
 
 /* check if the beginning of p equals str and if p is longer than str */
@@ -215,16 +216,6 @@ void split_env(const char *env_var, std::string msvc_arg, std::string &str)
       token = strtok(NULL, ";");
     }
   }
-}
-
-void errmsg(std::string msg)
-{
-  std::cerr << "error: " << msg << std::endl;
-}
-
-void warnmsg(std::string msg)
-{
-  std::cerr << "warning: " << msg << std::endl;
 }
 
 void print_help(char *self)
@@ -629,7 +620,7 @@ int main(int argc, char **argv)
   {
     if (!use_default_driver)
     {
-      warnmsg("ignoring `-m32' when using a custom cl.exe");
+      std::cerr << "warning: ignoring `-m32' when using a custom cl.exe" << std::endl;
     }
     driver_default = DEFAULT_CL_CMD_X86;
     lib_paths_default = DEFAULT_LIBPATHS_X86;
@@ -709,39 +700,6 @@ int main(int argc, char **argv)
     return 0;
   }
 
-
-  /* run the command in a forked shell */
-
-  int status;
-  int ret = 1;
-  pid_t pid = fork();
-
-  if (pid == 0)
-  {
-    execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
-    _exit(127);  /* if execl() was successful, this won't be reached */
-  }
-
-  if (pid > 0)
-  {
-    if (waitpid(pid, &status, 0) > 0)
-    {
-      if (WIFEXITED(status) == 1)
-      {
-        ret = WEXITSTATUS(status);
-        if (ret == 127) {
-          errmsg("execl() failed");
-        }
-      } else {
-        errmsg("the program did not terminate normally");
-      }
-    } else {
-      errmsg("waitpid() failed");
-    }
-  } else {
-    errmsg("failed to fork()");
-  }
-
-  return ret;
+  return system_return(cmd.c_str());
 }
 
