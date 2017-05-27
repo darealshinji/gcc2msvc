@@ -58,6 +58,12 @@
 -lrt          ""
 -lstdc++      ""
 -lgcc_s       ""
+-lmingw32     ""
+-lmingwex     ""
+-lmingwthrd   ""
+-lmoldname    ""
+-lpthread     ""
+-lwinpthread  ""
 -l%s          '%s.lib'
 -Wlink,%s     /%s
 -Wlink,/%s    /%s
