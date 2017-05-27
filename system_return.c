@@ -76,7 +76,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  int retval = command_return(argv[1]);
+  int retval = system_return(argv[1]);
   printf("command `%s' returned %d\n", argv[1], retval);
 
   return 0;
