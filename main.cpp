@@ -114,21 +114,21 @@ std::string win_path(char *ch)
     {
       if (strchr("cdefghijklmnopqrstuvwxyzab", ch[5]) != NULL)
       {
-        char tmp[8];
+        char *drive = new char[2];
+        sprintf(drive, "%c", toupper(ch[5]));
+
         if (strlen(ch) == 6)
         {
           /* /mnt/d -> D:/ */
           prepend = false;
-          sprintf(tmp, "%c:/", toupper(ch[5]));
-          str = STR(tmp);
+          str = STR(drive) + ":/";
         }
         else if (ch[6] == '/')
         {
           /* /mnt/d/ -> D:/
            * /mnt/d/dir -> D:/dir */
           prepend = false;
-          sprintf(tmp, "%c:/", toupper(ch[5]));
-          str = STR(tmp) + STR(ch+7);
+          str = STR(drive) + ":/" + STR(ch+7);
         }
       }
     }
@@ -171,17 +171,17 @@ std::string unix_path(char *ch)
 
   if (drive != '\0')
   {
-    char tmp[8];
+    char *tmp = new char[2];
+    sprintf(tmp, "%c", drive);
+
     if (len == 2)
     {
-      sprintf(tmp, "/mnt/%c", drive);
-      str = STR(tmp);
+      str = "/mnt/" + STR(tmp);
     }
     else
     {
       /* don't use "/mnt/%c/" to prevent double slashes */
-      sprintf(tmp, "/mnt/%c\\", drive);
-      str = STR(tmp) + STR(ch+3);
+      str = "/mnt/" + STR(tmp) + "\\" + STR(ch+3);
     }
   }
   else
