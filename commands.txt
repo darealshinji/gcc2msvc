@@ -63,7 +63,6 @@
 -lmingwthrd   ""
 -lmoldname    ""
 -lpthread     ""
--lwinpthread  ""
 -l%s          '%s.lib'
 -Wlink,%s     /%s
 -Wlink,/%s    /%s

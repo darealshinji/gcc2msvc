@@ -386,8 +386,7 @@ int main(int argc, char **argv)
                    str != "-lmingwex"   && /* to disable the blacklisting */
                    str != "-lmingwthrd" &&
                    str != "-lmoldname"  &&
-                   str != "-lpthread"   &&
-                   str != "-lwinpthread")  { lnk += " '" + STR(arg+2) + ".lib'"; }
+                   str != "-lpthread")     { lnk += " '" + STR(arg+2) + ".lib'"; }
         }
 
         /*  -O0 -O1 -O2 -O3 -Os  */
