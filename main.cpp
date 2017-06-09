@@ -46,12 +46,12 @@
   "  --version             display version information of cl.exe and link.exe\n" \
   "  --verbose             print commands\n" \
   "  --print-only          print commands and don't to anything\n" \
-  "  --cl=path             path to cl.exe\n" \
+  "  --path=path           semicolon (;) separated list of win32 paths to run cl.exe\n" \
   "  -Wcl,arg -Wlink,arg   parse msvc options directly to cl.exe/link.exe;\n" \
   "                        see also https://msdn.microsoft.com/en-us/library/19z1t1wy.aspx\n" \
   "\n" \
   "Environment variables:\n" \
-  "  CL_CMD      path to cl.exe\n" \
+  "  CL_PATH     semicolon (;) separated list of paths to run cl.exe\n" \
   "  INCLUDE     semicolon (;) separated list of include paths\n" \
   "  LIB         semicolon (;) separated list of library search paths\n"
 
@@ -71,14 +71,10 @@
 #include "config.h"
 
 #define STR(x) std::string(x)
+#define RUN_EXE(x) "cmd.exe /C 'set PATH=" + driver_paths + ";%PATH% & " x
 
-#ifdef TEST
-void run_tests(void);
-#endif
 bool begins(const char *p, const char *str);
 std::string win_path(char *ch);
-std::string unix_path(char *ch);
-void replace_with_forward_slashes(const std::string &from, std::string &str);
 void split_env(const char *env_var, std::string msvc_arg, std::string &str);
 void print_help(char *self);
 extern "C" {
@@ -147,63 +143,6 @@ std::string win_path(char *ch)
   return str;
 }
 
-std::string unix_path(char *ch)
-{
-  std::string str;
-  char drive = '\0';
-  size_t len = strlen(ch);
-
-  /* check for drive letter */
-  if (len >= 2 && ch[1] == ':')
-  {
-    if (len == 2 || (len > 2 && (ch[2] == '\\' || ch[2] == '/')))
-    {
-      if (strchr("CDEFGHIJKLMNOPQRSTUVWXYZAB", ch[0]) != NULL)
-      {
-        drive = tolower(ch[0]);
-      }
-      else if (strchr("cdefghijklmnopqrstuvwxyzab", ch[0]) != NULL)
-      {
-        drive = ch[0];
-      }
-    }
-  }
-
-  if (drive != '\0')
-  {
-    char *tmp = new char[2];
-    sprintf(tmp, "%c", drive);
-
-    if (len == 2)
-    {
-      str = "/mnt/" + STR(tmp);
-    }
-    else
-    {
-      /* don't use "/mnt/%c/" to prevent double slashes */
-      str = "/mnt/" + STR(tmp) + "\\" + STR(ch+3);
-    }
-  }
-  else
-  {
-    str = STR(ch);
-  }
-
-  /* convert backslashes (\) to forward slashes (/) */
-  replace_with_forward_slashes("\\\\", str);
-  replace_with_forward_slashes("\\", str);
-
-  return str;
-}
-
-void replace_with_forward_slashes(const std::string &from, std::string &str)
-{
-  for (size_t i = 0; (i = str.find(from, i)) != std::string::npos; ++i)
-  {
-    str.replace(i, from.size(), "/");
-  }
-}
-
 void split_env(const char *env_var, std::string msvc_arg, std::string &str)
 {
   char *env = getenv(env_var);
@@ -212,7 +151,7 @@ void split_env(const char *env_var, std::string msvc_arg, std::string &str)
     char *token = strtok(env, ";");
     while (token != NULL)
     {
-      str += " /" + msvc_arg + "'" + win_path(token) + "'";
+      str += " /" + msvc_arg + "\"" + win_path(token) + "\"";
       token = strtok(NULL, ";");
     }
   }
@@ -226,12 +165,7 @@ void print_help(char *self)
 
 int main(int argc, char **argv)
 {
-#ifdef TEST
-  run_tests();
-  return 0;
-#endif
-
-  std::string str, cmd, lnk, driver;
+  std::string str, cmd, lnk, driver_paths;
   std::string driver_default = DEFAULT_CL_CMD_X64;
   std::string includes_default = DEFAULT_INCLUDES;
   std::string lib_paths_default = DEFAULT_LIBPATHS_X64;
@@ -250,10 +184,11 @@ int main(int argc, char **argv)
   bool default_lib_paths = true;
   bool dll = false;
 
-  char *driver_env = getenv("CL_CMD");
+  char *driver_env = getenv("CL_PATH");
   if (driver_env != NULL)
   {
-    driver = unix_path(driver_env);
+    driver_paths = driver_env;
+    use_default_driver = false;
   }
 
 
@@ -269,7 +204,7 @@ int main(int argc, char **argv)
     {
       if (arg[1] == '-')
       {
-        if      (begins(arg, "--cl="))   { driver = unix_path(arg+5);
+        if      (begins(arg, "--path=")) { driver_paths = arg+7;
                                            use_default_driver = false;    }
         else if (str == "--verbose")     { verbose = true;                }
         else if (str == "--print-only")  { verbose = print_only = true;   }
@@ -324,10 +259,10 @@ int main(int argc, char **argv)
           if (len == 2) {
             ++i;
             if (i < argc) {
-              lnk += " /out:'" + STR(argv[i]) + "'";
+              lnk += " /out:\"" + STR(argv[i]) + "\"";
             }
           } else {
-            lnk += " /out:'" + STR(arg+2) + "'";
+            lnk += " /out:\"" + STR(arg+2) + "\"";
           }
           have_outname = true;
         }
@@ -338,10 +273,10 @@ int main(int argc, char **argv)
           if (len == 2) {
             ++i;
             if (i < argc) {
-              cmd += " /I'" + win_path(argv[i]) + "'";
+              cmd += " /I\"" + win_path(argv[i]) + "\"";
             }
           } else {
-            cmd += " /I'" + win_path(arg+2) + "'";
+            cmd += " /I\"" + win_path(arg+2) + "\"";
           }
         }
 
@@ -351,10 +286,10 @@ int main(int argc, char **argv)
           if (len == 2) {
             ++i;
             if (i < argc) {
-              cmd += " /" + str.substr(1,1) + "'" + STR(argv[i]) + "'";
+              cmd += " /" + str.substr(1,1) + "\"" + STR(argv[i]) + "\"";
             }
           } else {
-            cmd += " /" + str.substr(1,1) + "'" + STR(arg+2) + "'";
+            cmd += " /" + str.substr(1,1) + "\"" + STR(arg+2) + "\"";
           }
         }
 
@@ -364,10 +299,10 @@ int main(int argc, char **argv)
           if (len == 2) {
             ++i;
             if (i < argc) {
-              lnk += " /libpath:'" + win_path(argv[i]) + "'";
+              lnk += " /libpath:\"" + win_path(argv[i]) + "\"";
             }
           } else {
-            lnk += " /libpath:'" + win_path(arg+2) + "'";
+            lnk += " /libpath:\"" + win_path(arg+2) + "\"";
           }
         }
 
@@ -386,7 +321,7 @@ int main(int argc, char **argv)
                    str != "-lmingwex"   && /* to disable the blacklisting */
                    str != "-lmingwthrd" &&
                    str != "-lmoldname"  &&
-                   str != "-lpthread")     { lnk += " '" + STR(arg+2) + ".lib'"; }
+                   str != "-lpthread")     { lnk += " \"" + STR(arg+2) + ".lib\""; }
         }
 
         /*  -O0 -O1 -O2 -O3 -Os  */
@@ -425,25 +360,25 @@ int main(int argc, char **argv)
 
             else if (begins(lopt.c_str(), "--out-implib,"))
             {
-              lnk += " /implib:'" + STR(arg+17) + "'";
+              lnk += " /implib:\"" + STR(arg+17) + "\"";
             }
             else if (str == "-Wl,--out-implib")
             {
               ++i;
               if (i < argc && begins(argv[i], "-Wl,")) {
-                lnk += " /implib:'" + STR(argv[i]+4) + "'";
+                lnk += " /implib:\"" + STR(argv[i]+4) + "\"";
               }
             }
 
             else if (begins(lopt.c_str(), "-output-def,"))
             {
-              lnk += " /def:'" + STR(arg+16) + "'";
+              lnk += " /def:\"" + STR(arg+16) + "\"";
             }
             else if (str == "-Wl,-output-def")
             {
               ++i;
               if (i < argc && begins(argv[i], "-Wl,")) {
-                lnk += " /def:'" + STR(argv[i]+4) + "'";
+                lnk += " /def:\"" + STR(argv[i]+4) + "\"";
               }
             }
 
@@ -592,7 +527,7 @@ int main(int argc, char **argv)
         {
           ++i;
           if (i < argc) {
-            cmd += " /FI'" + STR(argv[i]) + "'";
+            cmd += " /FI\"" + STR(argv[i]) + "\"";
           }
         }
 
@@ -611,7 +546,7 @@ int main(int argc, char **argv)
     }
     else
     {
-      cmd += " '" + win_path(arg) + "'";
+      cmd += " \"" + win_path(arg) + "\"";
     }
   }
 
@@ -626,7 +561,7 @@ int main(int argc, char **argv)
   }
   if (use_default_driver)
   {
-    driver = driver_default;
+    driver_paths = driver_default;
   }
 
 
@@ -636,26 +571,18 @@ int main(int argc, char **argv)
   {
     /* piping to cat helps to display the
      * output correctly and in one go */
-    cmd = "'" + driver + "' /help 2>&1 | cat";
+    cmd =  RUN_EXE("cl.exe /help") "' 2>&1 | cat";
+    std::cout << cmd << std::endl;
     return system(cmd.c_str());
   }
   else if (print_help_link)
   {
-    cmd = "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe' 2>&1 | cat";
+    cmd = RUN_EXE("link.exe") "' 2>&1 | cat";
     return system(cmd.c_str());
   }
   else if (print_version)
   {
-    if (use_default_driver)
-    {
-      cmd = "'" DEFAULT_CL_CMD_X64 "' 2>&1 | head -n3 ; "
-            "'" DEFAULT_CL_CMD_X86 "' 2>&1 | head -n3 ; ";
-    }
-    else
-    {
-      cmd = "'" + driver + "' 2>&1 | head -n3 ; ";
-    }
-    cmd += "'" + driver.substr(0, driver.find_last_of("/\\")) + "/link.exe' 2>&1 | head -n3";
+    cmd = RUN_EXE("cl.exe") "' 2>&1 | head -n3 ; " + RUN_EXE("link.exe") "' 2>&1 | head -n3";
     return system(cmd.c_str());
   }
 
@@ -669,7 +596,7 @@ int main(int argc, char **argv)
 
 
   /* turn lists obtained from environment variables INCLUDE and
-   * and LIB into command line arguments /I'dir' and /libpath'dir' */
+   * and LIB into command line arguments /I\"dir\" and /libpath\"dir\" */
   split_env("INCLUDE", "I", cmd);
   split_env("LIB", "libpath", cmd);
 
@@ -681,14 +608,14 @@ int main(int argc, char **argv)
   {
     if (!have_outname)
     {
-      if (dll) { lnk += " /out:'a.dll'"; }
-      else     { lnk += " /out:'a.exe'"; }
+      if (dll) { lnk += " /out:\"a.dll\""; }
+      else     { lnk += " /out:\"a.exe\""; }
     }
     if (default_lib_paths) { lnk += " " + lib_paths_default; }
     cmd += " /link" + lnk;
   }
 
-  cmd = "'" + driver + "'" + cmd;
+  cmd = RUN_EXE("cl.exe") + cmd + "'";
 
   if (verbose)
   {

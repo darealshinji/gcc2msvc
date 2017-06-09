@@ -3,8 +3,8 @@
 /gcc2msvc_test
 /config.h
 /tmp_test.*
+*.o
 *.obj
 *.ilk
 *.pdb
 *.exe
-

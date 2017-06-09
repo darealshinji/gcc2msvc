@@ -36,9 +36,3 @@ for m in 32 64 ; do
   ./$exe
 done
 
-echo ""
-echo "=== Testing path conversion ==="
-g++ -g -O2 -DTEST -o gcc2msvc_test run_tests.cpp main.cpp
-./gcc2msvc_test
-echo ""
-
