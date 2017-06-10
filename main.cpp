@@ -616,6 +616,14 @@ int main(int argc, char **argv)
     cmd += " /link" + lnk;
   }
 
+  /* replace all occurences of single quotes (') with double quotes (");
+   * this is needed to wrap everything within singles quotes so we can
+   * parse it as a single command line argument to cmd.exe */
+  for (size_t i = 0; (i = cmd.find("'", i)) != std::string::npos; ++i)
+  {
+    cmd.replace(i, 1, "\"");
+  }
+
   cmd = run_exe + "cl.exe" + cmd + "'";
 
   if (verbose)
