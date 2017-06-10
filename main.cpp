@@ -71,7 +71,6 @@
 #include "config.h"
 
 #define STR(x) std::string(x)
-#define RUN_EXE(x) "cmd.exe /C 'set PATH=" + driver_paths + ";%PATH% & " x
 
 bool begins(const char *p, const char *str);
 std::string win_path(char *ch);
@@ -165,8 +164,8 @@ void print_help(char *self)
 
 int main(int argc, char **argv)
 {
-  std::string str, cmd, lnk, driver_paths;
-  std::string driver_default = DEFAULT_CL_CMD_X64;
+  std::string str, cmd, lnk, driver_paths, run_exe;
+  std::string driver_default = DEFAULT_CL_PATH_X64;
   std::string includes_default = DEFAULT_INCLUDES;
   std::string lib_paths_default = DEFAULT_LIBPATHS_X64;
   int bits = 64;
@@ -556,13 +555,15 @@ int main(int argc, char **argv)
     {
       std::cerr << "warning: ignoring `-m32' when using a custom cl.exe" << std::endl;
     }
-    driver_default = DEFAULT_CL_CMD_X86;
+    driver_default = DEFAULT_CL_PATH_X86;
     lib_paths_default = DEFAULT_LIBPATHS_X86;
   }
   if (use_default_driver)
   {
     driver_paths = driver_default;
   }
+
+  run_exe = "cmd.exe /C 'set PATH=" + driver_paths + ";%PATH% & ";
 
 
   /* print information and exit */
@@ -571,18 +572,18 @@ int main(int argc, char **argv)
   {
     /* piping to cat helps to display the
      * output correctly and in one go */
-    cmd =  RUN_EXE("cl.exe /help") "' 2>&1 | cat";
+    cmd = run_exe + "cl.exe /help' 2>&1 | cat";
     std::cout << cmd << std::endl;
     return system(cmd.c_str());
   }
   else if (print_help_link)
   {
-    cmd = RUN_EXE("link.exe") "' 2>&1 | cat";
+    cmd = run_exe + "link.exe' 2>&1 | cat";
     return system(cmd.c_str());
   }
   else if (print_version)
   {
-    cmd = RUN_EXE("cl.exe") "' 2>&1 | head -n3 ; " + RUN_EXE("link.exe") "' 2>&1 | head -n3";
+    cmd = run_exe + "cl.exe' 2>&1 | head -n3 ; " + run_exe + "link.exe' 2>&1 | head -n3";
     return system(cmd.c_str());
   }
 
@@ -615,7 +616,7 @@ int main(int argc, char **argv)
     cmd += " /link" + lnk;
   }
 
-  cmd = RUN_EXE("cl.exe") + cmd + "'";
+  cmd = run_exe + "cl.exe" + cmd + "'";
 
   if (verbose)
   {

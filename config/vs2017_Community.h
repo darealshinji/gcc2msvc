@@ -7,10 +7,10 @@
  "/I\"C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt\" " \
  "/I\"C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/um\""
 
-#define DEFAULT_CL_CMD_X64 \
+#define DEFAULT_CL_PATH_X64 \
  "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/bin/Hostx64/x64"
 
-#define DEFAULT_CL_CMD_X86 \
+#define DEFAULT_CL_PATH_X86 \
  "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/bin/Hostx64/x86;"\
  "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/bin/Hostx64/x64"
 
