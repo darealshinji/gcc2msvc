@@ -573,7 +573,6 @@ int main(int argc, char **argv)
     /* piping to cat helps to display the
      * output correctly and in one go */
     cmd = run_exe + "cl.exe /help' 2>&1 | cat";
-    std::cout << cmd << std::endl;
     return system(cmd.c_str());
   }
   else if (print_help_link)
