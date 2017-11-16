@@ -49,24 +49,25 @@
 -fno-whole-program        /GL-
 
 # link
--o[ ]%s       /out:'%s'
--L[ ]%s       /libpath:'%s'
--lmsvcrt      /MD
--llibcmt      /MT
--lc           ""
--lm           ""
--lrt          ""
--lstdc++      ""
--lgcc_s       ""
--lmingw32     ""
--lmingwex     ""
--lmingwthrd   ""
--lmoldname    ""
--lpthread     ""
--l%s          '%s.lib'
--Wlink,%s     /%s
--Wlink,/%s    /%s
--Wlink,-%s    /%s
+-o[ ]%s                   /out:'%s'
+-L[ ]%s                   /libpath:'%s'
+-static                   /MD
+-static-libgcc            /MD
+-static-libstdc++         /MD
+-lc                       ""
+-lm                       ""
+-lrt                      ""
+-lstdc++                  ""
+-lgcc_s                   ""
+-lmingw32                 ""
+-lmingwex                 ""
+-lmingwthrd               ""
+-lmoldname                ""
+-lpthread                 ""
+-l%s                      '%s.lib'
+-Wlink,%s                 /%s
+-Wlink,/%s                /%s
+-Wlink,-%s                /%s
 -Wl,--whole-archive       /wholearchive
 -Wl,--out-implib,%s       /implib:'%s'
 -Wl,--out-implib -Wl,%s   /implib:'%s'

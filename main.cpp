@@ -182,6 +182,7 @@ int main(int argc, char **argv)
   bool use_default_inc_paths = true;
   bool default_lib_paths = true;
   bool dll = false;
+  bool link_static = false;
 
   char *driver_env = getenv("CL_PATH");
   if (driver_env != NULL)
@@ -308,19 +309,16 @@ int main(int argc, char **argv)
         /*  -llibname  */
         else if (arg[1] == 'l' && len > 2)
         {
-          if      (str == "-lmsvcrt")      { cmd += " /MD"; }
-          else if (str == "-lcmt" ||
-                   str == "-llibcmt")      { cmd += " /MT"; } /* however libcmt is not part of mingw-w64 */
-          else if (str != "-lc"         &&
-                   str != "-lm"         &&
-                   str != "-lrt"        && /* always ignore these libraries */
-                   str != "-lstdc++"    &&
-                   str != "-lgcc_s"     &&
-                   str != "-lmingw32"   && /* TODO: maybe add an option   */
-                   str != "-lmingwex"   && /* to disable the blacklisting */
-                   str != "-lmingwthrd" &&
-                   str != "-lmoldname"  &&
-                   str != "-lpthread")     { lnk += " \"" + STR(arg+2) + ".lib\""; }
+          if (str != "-lc"         &&
+              str != "-lm"         &&
+              str != "-lrt"        && /* always ignore these libraries */
+              str != "-lstdc++"    &&
+              str != "-lgcc_s"     &&
+              str != "-lmingw32"   && /* TODO: maybe add an option   */
+              str != "-lmingwex"   && /* to disable the blacklisting */
+              str != "-lmingwthrd" &&
+              str != "-lmoldname"  &&
+              str != "-lpthread")     { lnk += " \"" + STR(arg+2) + ".lib\""; }
         }
 
         /*  -O0 -O1 -O2 -O3 -Os  */
@@ -510,14 +508,17 @@ int main(int argc, char **argv)
                                               default_lib_paths = false;     }
         }
 
-        /*  -shared  -std=c<..>|gnu<..>  */
+        /*  -shared  -static  -static-libgcc  -static-libstdc++  -std=c<..>|gnu<..>  */
         else if (arg[1] == 's' && len > 5)
         {
-          if      (str == "-shared")       { cmd += " /LD"; dll = true;     }
+          if      (str == "-shared")           { cmd += " /LD"; dll = true;     }
+          else if (str == "-static" ||
+                   str == "-static-libgcc" ||
+                   str == "-static-libstdc++") { link_static = true;            }
           else if (begins(arg, "-std="))
           {
-            if   (begins(arg, "-std=gnu")) { cmd += " /std:c" + STR(arg+8); }
-            else                           { cmd += " /std:" + STR(arg+5);  }
+            if   (begins(arg, "-std=gnu"))     { cmd += " /std:c" + STR(arg+8); }
+            else                               { cmd += " /std:" + STR(arg+5);  }
           }
         }
 
@@ -603,7 +604,8 @@ int main(int argc, char **argv)
 
   /* create the final command to execute */
 
-  if (use_default_inc_paths) { cmd += " " + includes_default;  }
+  if (use_default_inc_paths) { cmd += " " + includes_default; }
+  if (!link_static)          { cmd += " /MD";                 }
   if (do_link)
   {
     if (!have_outname)
